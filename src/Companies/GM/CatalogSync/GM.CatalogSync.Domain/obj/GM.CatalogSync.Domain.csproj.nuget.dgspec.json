@@ -1,0 +1,67 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj": {}
+  },
+  "projects": {
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj",
+        "projectName": "GM.CatalogSync.Domain",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

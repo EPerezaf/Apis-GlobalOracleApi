@@ -1,0 +1,11 @@
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\bin\Release\net9.0\Shared.Exceptions.deps.json
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\bin\Release\net9.0\Shared.Exceptions.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\bin\Release\net9.0\Shared.Exceptions.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.GeneratedMSBuildEditorConfig.editorconfig
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.AssemblyInfoInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.AssemblyInfo.cs
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.csproj.CoreCompileInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\refint\Shared.Exceptions.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\Shared.Exceptions.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Exceptions\obj\Release\net9.0\ref\Shared.Exceptions.dll

@@ -1,0 +1,15 @@
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\bin\Release\net9.0\Shared.Infrastructure.deps.json
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\bin\Release\net9.0\Shared.Infrastructure.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\bin\Release\net9.0\Shared.Infrastructure.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.csproj.AssemblyReference.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.AssemblyInfoInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.AssemblyInfo.cs
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.csproj.CoreCompileInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\refint\Shared.Infrastructure.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.Infrastructure.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\ref\Shared.Infrastructure.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\bin\Release\net9.0\Shared.Security.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\bin\Release\net9.0\Shared.Security.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Infrastructure\obj\Release\net9.0\Shared.I.E63B7492.Up2Date

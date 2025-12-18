@@ -1,0 +1,367 @@
+{
+  "format": 1,
+  "restore": {
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Infrastructure\\GM.CatalogSync.Infrastructure.csproj": {}
+  },
+  "projects": {
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj",
+        "projectName": "GM.CatalogSync.Domain",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Infrastructure\\GM.CatalogSync.Infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Infrastructure\\GM.CatalogSync.Infrastructure.csproj",
+        "projectName": "GM.CatalogSync.Infrastructure",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Infrastructure\\GM.CatalogSync.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Infrastructure\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj": {
+                "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Companies\\GM\\CatalogSync\\GM.CatalogSync.Domain\\GM.CatalogSync.Domain.csproj"
+              },
+              "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\Shared.Exceptions.csproj": {
+                "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\Shared.Exceptions.csproj"
+              },
+              "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\Shared.Infrastructure.csproj": {
+                "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\Shared.Infrastructure.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Dapper": {
+              "target": "Package",
+              "version": "[2.1.35, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\Shared.Exceptions.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\Shared.Exceptions.csproj",
+        "projectName": "Shared.Exceptions",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\Shared.Exceptions.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Exceptions\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\Shared.Infrastructure.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\Shared.Infrastructure.csproj",
+        "projectName": "Shared.Infrastructure",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\Shared.Infrastructure.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Infrastructure\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {
+              "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\Shared.Security.csproj": {
+                "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\Shared.Security.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Dapper": {
+              "target": "Package",
+              "version": "[2.1.35, )"
+            },
+            "Microsoft.Extensions.DependencyInjection.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Hosting.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "Oracle.ManagedDataAccess.Core": {
+              "target": "Package",
+              "version": "[23.7.0, )"
+            },
+            "Serilog": {
+              "target": "Package",
+              "version": "[4.2.0, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\Shared.Security.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\Shared.Security.csproj",
+        "projectName": "Shared.Security",
+        "projectPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\Shared.Security.csproj",
+        "packagesPath": "C:\\Users\\elias_k5\\.nuget\\packages\\",
+        "outputPath": "D:\\Proyectos\\Proyectos.Net\\GlobalOracleAPI\\src\\Shared\\Shared.Security\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\elias_k5\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "dependencies": {
+            "Microsoft.AspNetCore.Http.Abstractions": {
+              "target": "Package",
+              "version": "[2.2.0, )"
+            },
+            "Microsoft.Extensions.Logging.Abstractions": {
+              "target": "Package",
+              "version": "[9.0.0, )"
+            },
+            "System.IdentityModel.Tokens.Jwt": {
+              "target": "Package",
+              "version": "[8.2.1, )"
+            }
+          },
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.307/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}

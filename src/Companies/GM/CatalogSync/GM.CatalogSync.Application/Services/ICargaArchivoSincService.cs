@@ -1,0 +1,42 @@
+using GM.CatalogSync.Application.DTOs;
+
+namespace GM.CatalogSync.Application.Services;
+
+/// <summary>
+/// Interfaz del servicio para Carga de Archivo de Sincronización.
+/// </summary>
+public interface ICargaArchivoSincService
+{
+    /// <summary>
+    /// Obtiene un registro por su ID.
+    /// </summary>
+    Task<CargaArchivoSincDto?> ObtenerPorIdAsync(int id);
+
+    /// <summary>
+    /// Obtiene todos los registros con filtros opcionales y paginación.
+    /// </summary>
+    /// <param name="proceso">Filtro por proceso (opcional)</param>
+    /// <param name="idCarga">Filtro por ID de carga (opcional)</param>
+    /// <param name="actual">Filtro por estado actual (opcional)</param>
+    /// <param name="page">Número de página (por defecto: 1)</param>
+    /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
+    /// <returns>Tupla con la lista de registros y el total de registros</returns>
+    Task<(List<CargaArchivoSincDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+        string? proceso = null,
+        string? idCarga = null,
+        bool? actual = null,
+        int page = 1,
+        int pageSize = 200);
+
+    /// <summary>
+    /// Crea un nuevo registro de carga de archivo de sincronización.
+    /// Automáticamente marca los registros anteriores del mismo proceso como no actuales.
+    /// </summary>
+    /// <param name="dto">Datos del nuevo registro</param>
+    /// <param name="usuarioAlta">Usuario que realiza la operación</param>
+    /// <returns>Registro creado</returns>
+    Task<CargaArchivoSincDto> CrearAsync(
+        CrearCargaArchivoSincDto dto,
+        string usuarioAlta);
+}
+

@@ -1,0 +1,11 @@
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\bin\Release\net9.0\Shared.Contracts.deps.json
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\bin\Release\net9.0\Shared.Contracts.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\bin\Release\net9.0\Shared.Contracts.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.GeneratedMSBuildEditorConfig.editorconfig
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.AssemblyInfoInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.AssemblyInfo.cs
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.csproj.CoreCompileInputs.cache
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\refint\Shared.Contracts.dll
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\Shared.Contracts.pdb
+D:\Proyectos\Proyectos.Net\GlobalOracleAPI\src\Shared\Shared.Contracts\obj\Release\net9.0\ref\Shared.Contracts.dll

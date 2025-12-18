@@ -1,0 +1,1581 @@
+# GlobalOracleAPI - Cursor Rules
+
+## 📚 Documentación
+La documentación completa está en `docs/`:
+- `docs/ARCHITECTURE.md` - Arquitectura y estrategia
+- `docs/MODULE_TEMPLATE.md` - Plantilla para crear módulos
+- `docs/CODING_CONVENTIONS.md` - Convenciones de código
+
+## 🏗️ Arquitectura del Proyecto
+
+### Estructura de Carpetas
+```
+src/
+├── Companies/                    # APIs específicas por empresa
+│   └── {Company}/                # GM, Jetour, Nissan, etc.
+│       └── {Module}/             # CatalogSync, Sales, PostSales, etc.
+│           ├── {Company}.{Module}.API
+│           ├── {Company}.{Module}.Application
+│           ├── {Company}.{Module}.Domain
+│           └── {Company}.{Module}.Infrastructure
+│
+└── Shared/                       # Funcionalidades compartidas
+    ├── Shared.Contracts/         # DTOs, Responses comunes
+    ├── Shared.Exceptions/       # Excepciones base
+    ├── Shared.Security/          # JWT, Autenticación
+    └── Shared.Infrastructure/    # Conexiones, Factories
+```
+
+### Principios Fundamentales
+1. **Separación por Dominio de Negocio** - NO por tecnología
+2. **50-100 endpoints por módulo** (ideal)
+3. **Modular Monolith** - Un solo deploy, módulos aislados
+4. **Estructura:** `Companies → {Company} → {Module} → {Layers}`
+5. **ORM:** Dapper (micro-ORM) - NO Entity Framework ni ADO.NET puro
+
+## 🏷️ Nomenclatura
+
+### Proyectos (.csproj)
+**Formato:** `{Company}.{Module}.{Layer}`
+
+Ejemplos:
+- `GM.CatalogSync.API`
+- `GM.CatalogSync.Application`
+- `GM.CatalogSync.Domain`
+- `GM.CatalogSync.Infrastructure`
+- `Jetour.Sales.API`
+
+### Carpetas Físicas
+**Formato:** `src/Companies/{Company}/{Module}/{Project}`
+
+Ejemplo:
+- `src/Companies/GM/CatalogSync/GM.CatalogSync.API/`
+
+### Namespaces
+**Formato:** `{Company}.{Module}.{Layer}`
+
+Ejemplo:
+```csharp
+namespace GM.CatalogSync.API.Controllers;
+namespace GM.CatalogSync.Application.Services;
+namespace GM.CatalogSync.Domain.Entities;
+```
+
+### Clases y Archivos
+- **Clases:** `PascalCase` - `OrderService`, `ProductRepository`
+- **Interfaces:** `I` + `PascalCase` - `IOrderService`, `IProductRepository`
+- **DTOs:** `{Action}{Entity}Dto` - `CreateOrderDto`, `UpdateOrderDto`, `OrderDto`
+- **Métodos:** `PascalCase` con sufijo `Async` - `GetOrderByIdAsync`, `CreateOrderAsync`
+- **Variables:** `camelCase` - `orderService`, `orderId`
+
+## 📦 Estructura de Capas
+
+### API Layer
+- **Ubicación:** `{Company}.{Module}.API/Controllers/`
+- **Responsabilidad:** Controllers, Endpoints, Validación de entrada
+- **Dependencias:** Application, Domain, Shared.*
+
+**Estructura:**
+```
+API/
+├── Controllers/
+│   └── {Entity}Controller.cs
+├── Program.cs
+└── appsettings.json
+```
+
+### Application Layer
+- **Ubicación:** `{Company}.{Module}.Application/`
+- **Responsabilidad:** Lógica de negocio, DTOs, Servicios
+- **Dependencias:** Domain, Shared.*
+
+**Estructura:**
+```
+Application/
+├── DTOs/
+│   ├── {Entity}Dto.cs
+│   ├── Create{Entity}Dto.cs
+│   └── Update{Entity}Dto.cs
+├── Services/
+│   ├── I{Entity}Service.cs
+│   └── {Entity}Service.cs
+└── Exceptions/
+    └── {Entity}Exceptions.cs
+```
+
+### Domain Layer
+- **Ubicación:** `{Company}.{Module}.Domain/`
+- **Responsabilidad:** Entidades, Interfaces de repositorio, Reglas de negocio
+- **Dependencias:** Solo Shared.Contracts (si es necesario)
+
+**Estructura:**
+```
+Domain/
+├── Entities/
+│   └── {Entity}.cs
+├── Interfaces/
+│   └── I{Entity}Repository.cs
+└── ValueObjects/
+```
+
+### Infrastructure Layer
+- **Ubicación:** `{Company}.{Module}.Infrastructure/`
+- **Responsabilidad:** Repositorios, Acceso a datos, Integraciones externas
+- **Dependencias:** Domain, Shared.Infrastructure
+
+**Estructura:**
+```
+Infrastructure/
+└── Repositories/
+    └── {Entity}Repository.cs
+```
+
+## 🛣️ Convenciones de Controllers
+
+### Route Attributes
+**Formato:** `/api/v{version}/{company}/{module}/{resource}`
+
+Ejemplo:
+```csharp
+[ApiController]
+[Route("api/v1/gm/catalog-sync/products")]
+public class ProductsController : ControllerBase
+```
+
+### Métodos HTTP
+- `[HttpGet]` - GET /api/v1/gm/catalog-sync/products
+- `[HttpGet("{id}")]` - GET /api/v1/gm/catalog-sync/products/{id}
+- `[HttpPost]` - POST /api/v1/gm/catalog-sync/products
+- `[HttpPut("{id}")]` - PUT /api/v1/gm/catalog-sync/products/{id}
+- `[HttpPatch("{id}")]` - PATCH /api/v1/gm/catalog-sync/products/{id}
+- `[HttpDelete("{id}")]` - DELETE /api/v1/gm/catalog-sync/products/{id}
+
+### Respuestas
+**SIEMPRE usar `ApiResponse<T>` de Shared.Contracts:**
+
+```csharp
+[HttpGet]
+public async Task<ActionResult<ApiResponse<List<ProductDto>>>> GetProducts()
+{
+    var products = await _productService.GetAllProductsAsync();
+    return Ok(ApiResponse<List<ProductDto>>.Success(products));
+}
+
+[HttpGet("{id}")]
+public async Task<ActionResult<ApiResponse<ProductDto>>> GetProduct(int id)
+{
+    var product = await _productService.GetProductByIdAsync(id);
+    if (product == null)
+    {
+        return NotFound(ApiResponse<ProductDto>.Error("Product not found"));
+    }
+    return Ok(ApiResponse<ProductDto>.Success(product));
+}
+
+[HttpPost]
+public async Task<ActionResult<ApiResponse<ProductDto>>> CreateProduct([FromBody] CreateProductDto dto)
+{
+    try
+    {
+        var product = await _productService.CreateProductAsync(dto);
+        return CreatedAtAction(nameof(GetProduct), new { id = product.Id }, 
+            ApiResponse<ProductDto>.Success(product));
+    }
+    catch (BusinessValidationException ex)
+    {
+        return BadRequest(ApiResponse<ProductDto>.Error(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error creating product");
+        return StatusCode(500, ApiResponse<ProductDto>.Error("Internal server error"));
+    }
+}
+```
+
+### Paginación en GET (OBLIGATORIO)
+**TODOS los endpoints GET que devuelven listas DEBEN incluir paginación y timestamp:**
+
+#### Estructura de Respuesta Requerida
+```json
+{
+  "success": true,
+  "message": "...",
+  "data": [...],
+  "pagination": {
+    "page": 1,
+    "pageSize": 200,
+    "totalRecords": 42,
+    "totalPages": 5
+  },
+  "timestamp": "2025-11-03T22:28:23Z"
+}
+```
+
+#### Implementación en Controller
+```csharp
+[HttpGet]
+[ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), 200)]
+public async Task<IActionResult> ObtenerProductos(
+    [FromQuery] string? filtro = null,
+    [FromQuery] int page = 1,
+    [FromQuery] int pageSize = 200)
+{
+    var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+    var stopwatch = Stopwatch.StartNew();
+
+    try
+    {
+        // El servicio debe retornar (List<T> data, int totalRecords)
+        var (data, totalRecords) = await _service.ObtenerConFiltrosAsync(filtro, page, pageSize);
+
+        int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
+
+        stopwatch.Stop();
+        _logger.LogInformation(
+            "Productos obtenidos. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Registros: {Count} de {Total}, Página: {Page} de {TotalPages}",
+            correlationId, stopwatch.ElapsedMilliseconds, data.Count, totalRecords, page, totalPages);
+
+        return Ok(new ApiResponse<List<ProductDto>>
+        {
+            Success = true,
+            Message = data.Count > 0
+                ? $"Registros obtenidos exitosamente (Página {page} de {totalPages})"
+                : "No se encontraron registros que coincidan con los filtros",
+            Data = data,
+            Pagination = new PaginationInfo
+            {
+                Page = page,
+                PageSize = pageSize,
+                TotalRecords = totalRecords,
+                TotalPages = totalPages
+            },
+            Timestamp = DateTimeHelper.GetMexicoTimeString()
+        });
+    }
+    catch (Exception ex)
+    {
+        stopwatch.Stop();
+        _logger.LogError(ex, "Error al obtener productos");
+        return StatusCode(500, new ApiResponse
+        {
+            Success = false,
+            Message = "Error interno del servidor",
+            Timestamp = DateTimeHelper.GetMexicoTimeString()
+        });
+    }
+}
+```
+
+#### Implementación en Service
+```csharp
+public interface IProductService
+{
+    Task<(List<ProductDto> data, int totalRecords)> ObtenerConFiltrosAsync(
+        string? filtro = null,
+        int page = 1,
+        int pageSize = 200);
+}
+
+public class ProductService : IProductService
+{
+    public async Task<(List<ProductDto> data, int totalRecords)> ObtenerConFiltrosAsync(
+        string? filtro = null,
+        int page = 1,
+        int pageSize = 200)
+    {
+        var (entidades, totalRecords) = await _repository.ObtenerConFiltrosAsync(filtro, page, pageSize);
+        var dtos = entidades.Select(MapearADto).ToList();
+        return (dtos, totalRecords);
+    }
+}
+```
+
+#### Implementación en Repository
+```csharp
+public interface IProductRepository
+{
+    Task<(List<Product> data, int totalRecords)> ObtenerConFiltrosAsync(
+        string? filtro = null,
+        int page = 1,
+        int pageSize = 200);
+}
+
+public class ProductRepository : IProductRepository
+{
+    public async Task<(List<Product> data, int totalRecords)> ObtenerConFiltrosAsync(
+        string? filtro = null,
+        int page = 1,
+        int pageSize = 200)
+    {
+        using var connection = await _connectionFactory.CreateConnectionAsync();
+        
+        var parameters = new DynamicParameters();
+        var whereClause = "WHERE 1=1";
+
+        if (!string.IsNullOrWhiteSpace(filtro))
+        {
+            whereClause += " AND UPPER(Nombre) LIKE UPPER(:Filtro)";
+            parameters.Add("Filtro", $"%{filtro}%");
+        }
+
+        // Obtener total de registros
+        var countSql = $"SELECT COUNT(*) FROM {TABLA} {whereClause}";
+        var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+        if (totalRecords == 0)
+        {
+            return (new List<Product>(), 0);
+        }
+
+        // Aplicar paginación
+        int offset = (page - 1) * pageSize;
+        parameters.Add("offset", offset);
+        parameters.Add("limit", offset + pageSize);
+
+        var sql = $@"
+            SELECT * FROM (
+                SELECT 
+                    Id, Nombre, Status,
+                    ROW_NUMBER() OVER (ORDER BY Id DESC) AS RNUM
+                FROM {TABLA}
+                {whereClause}
+            ) WHERE RNUM > :offset AND RNUM <= :limit";
+
+        var resultados = await connection.QueryAsync<Product>(sql, parameters);
+        var lista = resultados.ToList();
+
+        return (lista, totalRecords);
+    }
+}
+```
+
+#### Reglas de Paginación
+- ✅ **TODOS los GET que devuelven listas** deben incluir `Pagination` y `Timestamp`
+- ✅ **Parámetros por defecto:** `page = 1`, `pageSize = 200`
+- ✅ **GET por ID** (devuelve un solo objeto) solo necesita `Timestamp`, NO paginación
+- ✅ **Endpoints de estadísticas/monitoreo** solo necesitan `Timestamp`, NO paginación
+- ✅ **Calcular `totalPages`** usando `Math.Ceiling((double)totalRecords / pageSize)`
+- ✅ **Usar `ROW_NUMBER()` en Oracle** para paginación eficiente
+- ✅ **Incluir `totalRecords`** en la respuesta para que el cliente sepa el total
+
+#### Ejemplo de Respuesta JSON
+```json
+{
+  "success": true,
+  "message": "Registros obtenidos exitosamente (Página 1 de 5)",
+  "data": [
+    {
+      "id": 1,
+      "nombre": "Producto 1"
+    },
+    {
+      "id": 2,
+      "nombre": "Producto 2"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 200,
+    "totalRecords": 42,
+    "totalPages": 5
+  },
+  "timestamp": "2025-11-03T22:28:23Z"
+}
+```
+
+## 🔄 Convenciones de Servicios
+
+### Interfaces
+```csharp
+public interface I{Entity}Service
+{
+    Task<{Entity}Dto?> Get{Entity}ByIdAsync(int id);
+    Task<List<{Entity}Dto>> GetAll{Entity}sAsync();
+    Task<{Entity}Dto> Create{Entity}Async(Create{Entity}Dto dto);
+    Task<{Entity}Dto> Update{Entity}Async(int id, Update{Entity}Dto dto);
+    Task Delete{Entity}Async(int id);
+}
+```
+
+### Implementación
+```csharp
+public class {Entity}Service : I{Entity}Service
+{
+    private readonly I{Entity}Repository _repository;
+    private readonly ILogger<{Entity}Service> _logger;
+
+    public {Entity}Service(I{Entity}Repository repository, ILogger<{Entity}Service> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    public async Task<{Entity}Dto?> Get{Entity}ByIdAsync(int id)
+    {
+        // Implementación
+    }
+}
+```
+
+### Registro en Program.cs
+```csharp
+builder.Services.AddScoped<I{Entity}Repository, {Entity}Repository>();
+builder.Services.AddScoped<I{Entity}Service, {Entity}Service>();
+```
+
+## 🗄️ Convenciones de Repositorios
+
+### 🔧 ORM: Dapper (OBLIGATORIO)
+**SIEMPRE usar Dapper como micro-ORM para acceso a datos. NO usar Entity Framework ni ADO.NET puro (OracleCommand).**
+
+#### ¿Por qué Dapper?
+- ✅ Alto rendimiento (cercano a ADO.NET puro)
+- ✅ Mapeo automático de resultados a objetos
+- ✅ Soporte nativo para parámetros y transacciones
+- ✅ Control total sobre las queries SQL
+- ✅ Ideal para Oracle con `Oracle.ManagedDataAccess.Core`
+
+#### Dependencias requeridas
+```xml
+<PackageReference Include="Dapper" Version="2.1.*" />
+<PackageReference Include="Oracle.ManagedDataAccess.Core" Version="23.*" />
+```
+
+### Interfaces
+```csharp
+public interface I{Entity}Repository
+{
+    Task<{Entity}?> GetByIdAsync(int id);
+    Task<List<{Entity}>> GetAllAsync();
+    Task<{Entity}> CreateAsync({Entity} entity);
+    Task<{Entity}> UpdateAsync({Entity} entity);
+    Task DeleteAsync(int id);
+}
+```
+
+### Implementación con Dapper + Oracle
+**SIEMPRE usar Dapper con `using` para conexiones Oracle:**
+
+```csharp
+using Dapper;
+using Oracle.ManagedDataAccess.Client;
+
+public class {Entity}Repository : I{Entity}Repository
+{
+    private readonly IOracleConnectionFactory _connectionFactory;
+    private readonly ILogger<{Entity}Repository> _logger;
+
+    public {Entity}Repository(IOracleConnectionFactory connectionFactory, ILogger<{Entity}Repository> logger)
+    {
+        _connectionFactory = connectionFactory;
+        _logger = logger;
+    }
+
+    public async Task<{Entity}?> GetByIdAsync(int id)
+    {
+        const string sql = @"
+            SELECT Id, Name, Status, UsuarioInserto, FechaInsercion, 
+                   UltimoUsuarioActualizo as UltimoUsuarioActualizo, FechaActualizacion
+            FROM {TableName}
+            WHERE Id = :Id";
+
+        try
+        {
+            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo {Entity} por ID: {Id}", id);
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            // Dapper mapea automáticamente las columnas a propiedades
+            var resultado = await connection.QueryFirstOrDefaultAsync<{Entity}>(sql, new { Id = id });
+
+            if (resultado == null)
+            {
+                _logger.LogWarning("⚠️ [REPOSITORY] Entidad {EntityId} no encontrada", id);
+                return null;
+            }
+
+            _logger.LogInformation("✅ [REPOSITORY] Entidad {EntityId} obtenida exitosamente", id);
+            return resultado;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle en {Method}. ErrorCode: {ErrorCode}",
+                nameof(GetByIdAsync), ex.Number);
+            throw new DataAccessException("Error al acceder a la base de datos", ex);
+        }
+    }
+
+    public async Task<List<{Entity}>> GetAllAsync()
+    {
+        const string sql = @"
+            SELECT Id, Name, Status, UsuarioInserto, FechaInsercion, 
+                   UltimoUsuarioActualizo, FechaActualizacion
+            FROM {TableName}
+            ORDER BY Id DESC";
+
+        try
+        {
+            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo todos los registros de {Entity}");
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var resultados = await connection.QueryAsync<{Entity}>(sql);
+            var lista = resultados.ToList();
+
+            _logger.LogInformation("✅ [REPOSITORY] {Cantidad} registros obtenidos", lista.Count);
+            return lista;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle en {Method}. ErrorCode: {ErrorCode}",
+                nameof(GetAllAsync), ex.Number);
+            throw new DataAccessException("Error al acceder a la base de datos", ex);
+        }
+    }
+
+    public async Task<{Entity}> CreateAsync({Entity} entity, string currentUser)
+    {
+        const string sql = @"
+            INSERT INTO {TableName} (Name, Status, UsuarioInserto)
+            VALUES (:Name, :Status, :UsuarioInserto)
+            RETURNING Id INTO :Id";
+
+        try
+        {
+            _logger.LogInformation("🗄️ [REPOSITORY] Creando entidad {EntityName} por usuario {User}",
+                entity.Name, currentUser);
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            // Usar DynamicParameters para manejar parámetros de salida (RETURNING INTO)
+            var parameters = new DynamicParameters();
+            parameters.Add("Name", entity.Name);
+            parameters.Add("Status", entity.Status);
+            parameters.Add("UsuarioInserto", currentUser);
+            parameters.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+
+            await connection.ExecuteAsync(sql, parameters);
+
+            entity.Id = parameters.Get<int>("Id");
+
+            _logger.LogInformation("✅ [REPOSITORY] Entidad {EntityId} creada exitosamente", entity.Id);
+            return entity;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle al crear entidad. ErrorCode: {ErrorCode}",
+                ex.Number);
+            throw new DataAccessException("Error al crear la entidad en la base de datos", ex);
+        }
+    }
+}
+```
+
+### 📚 Métodos principales de Dapper
+
+| Método | Uso |
+|--------|-----|
+| `QueryAsync<T>` | Obtener múltiples registros |
+| `QueryFirstOrDefaultAsync<T>` | Obtener un registro o null |
+| `ExecuteAsync` | INSERT, UPDATE, DELETE |
+| `ExecuteScalarAsync<T>` | Obtener un valor escalar (COUNT, SUM, etc.) |
+| `DynamicParameters` | Manejar parámetros de entrada/salida |
+
+### 🔄 Transacciones con Dapper
+
+```csharp
+using var connection = await _connectionFactory.CreateConnectionAsync();
+using var transaction = connection.BeginTransaction();
+
+try
+{
+    // Operación 1
+    await connection.ExecuteAsync(sqlUpdate, parametros1, transaction);
+    
+    // Operación 2
+    await connection.ExecuteAsync(sqlInsert, parametros2, transaction);
+    
+    transaction.Commit();
+    _logger.LogInformation("✅ Transacción completada exitosamente");
+}
+catch (Exception)
+{
+    transaction.Rollback();
+    _logger.LogError("❌ Rollback ejecutado");
+    throw;
+}
+```
+
+### ⚠️ Reglas Críticas para Dapper + Oracle
+
+**✅ SIEMPRE hacer:**
+- Usar `using var connection = await _connectionFactory.CreateConnectionAsync();`
+- Usar Dapper (`QueryAsync`, `ExecuteAsync`) en lugar de `OracleCommand`
+- Parametrizar TODAS las consultas con objetos anónimos o `DynamicParameters`
+- Usar alias en SELECT para mapear a propiedades de la entidad
+- Usar transacciones para operaciones múltiples
+- Cerrar conexiones con `using` (automático)
+
+**❌ NUNCA hacer:**
+```csharp
+// ❌ SQL Injection vulnerability
+string sql = $"SELECT * FROM Users WHERE Id = {id}";
+
+// ❌ Usar OracleCommand en lugar de Dapper
+using var command = new OracleCommand(sql, connection);
+
+// ❌ Conexión sin using
+var connection = new OracleConnection(_connectionString);
+connection.Open();
+// ¡Conexión nunca se cierra!
+
+// ❌ Sin parametrizar
+var sql = $"SELECT * FROM Users WHERE Id = {id}";
+await connection.QueryAsync<User>(sql);
+```
+
+## 📊 Convenciones de DTOs
+
+### Naming
+- `{Entity}Dto` - Para lectura
+- `Create{Entity}Dto` - Para creación
+- `Update{Entity}Dto` - Para actualización
+- `{Entity}SummaryDto` - Para resúmenes
+
+### Estructura
+```csharp
+public class Create{Entity}Dto
+{
+    [Required]
+    public int Property1 { get; set; }
+
+    [Required]
+    [MinLength(1)]
+    public string Property2 { get; set; } = string.Empty;
+
+    public string? OptionalProperty { get; set; }
+}
+```
+
+## 🏗️ Convenciones de Entidades
+
+### Estructura con Auditoría
+**Cada entidad debe incluir campos de auditoría:**
+
+```csharp
+public class {Entity}
+{
+    public int Id { get; set; }
+    public int ForeignKeyId { get; set; }
+    
+    // Campos de auditoría (requeridos)
+    public string UsuarioInserto { get; set; } = string.Empty;
+    public DateTime FechaInsercion { get; set; }
+    public string? UltimoUsuarioActualizo { get; set; }
+    public DateTime? FechaActualizacion { get; set; }
+    
+    public {Status} Status { get; set; }
+    public List<{RelatedEntity}> RelatedEntities { get; set; } = new();
+}
+```
+
+### Auditoría de Acciones
+**Cada modificación en la BD debe registrar:**
+- `UsuarioInserto` - Usuario que creó el registro
+- `UltimoUsuarioActualizo` - Último usuario que modificó
+- `FechaInsercion` - Fecha de creación (SYSDATE en Oracle)
+- `FechaActualizacion` - Fecha de última actualización (SYSDATE en Oracle)
+
+**El usuario debe provenir del contexto de autenticación JWT:**
+```csharp
+var userId = JwtUserHelper.GetUserId(HttpContext.User);
+await _repository.CreateAsync(entity, userId);
+```
+
+**Las fechas deben establecerse por trigger en Oracle (recomendado):**
+```sql
+CREATE OR REPLACE TRIGGER TRG_AUD_{TABLE_NAME}
+BEFORE INSERT OR UPDATE ON {TABLE_NAME}
+FOR EACH ROW
+BEGIN
+    IF INSERTING THEN
+        :NEW.FechaInsercion := SYSDATE;
+        :NEW.UsuarioInserto := :NEW.UsuarioInserto;
+    ELSIF UPDATING THEN
+        :NEW.FechaActualizacion := SYSDATE;
+        :NEW.UltimoUsuarioActualizo := :NEW.UltimoUsuarioActualizo;
+    END IF;
+END;
+/
+```
+
+**O establecer en el código C#:**
+```csharp
+public async Task<{Entity}> CreateAsync({Entity} entity, string currentUser)
+{
+    entity.UsuarioInserto = currentUser;
+    entity.FechaInsercion = DateTimeHelper.GetMexicoDateTime();
+    // ... resto de la lógica ...
+}
+```
+
+## 🕐 Manejo de Fechas y Zona Horaria (OBLIGATORIO)
+
+### Regla Fundamental
+**TODAS las APIs que guarden o muestren fechas DEBEN usar la zona horaria de México.**
+
+### Helper de Fechas
+**SIEMPRE usar `DateTimeHelper` de `Shared.Security` para fechas:**
+
+```csharp
+using Shared.Security;
+
+// Para obtener DateTime (objetos, propiedades)
+var fechaHora = DateTimeHelper.GetMexicoDateTime();
+
+// Para obtener string formateado (respuestas JSON, logs)
+var fechaHoraString = DateTimeHelper.GetMexicoTimeString();
+```
+
+### Uso en Controllers
+**TODOS los campos `Timestamp` en respuestas API deben usar hora de México:**
+
+```csharp
+// ✅ CORRECTO
+return Ok(new ApiResponse<object>
+{
+    Success = true,
+    Data = data,
+    Timestamp = DateTimeHelper.GetMexicoTimeString()  // Para strings en JSON
+});
+
+// ✅ CORRECTO (si el objeto necesita DateTime)
+var stats = new
+{
+    ProcessId = process.Id,
+    Timestamp = DateTimeHelper.GetMexicoDateTime()  // Para objetos DateTime
+};
+```
+
+### Uso en Services
+**Al crear o actualizar entidades con fechas:**
+
+```csharp
+// ✅ CORRECTO
+var entidad = new CargaArchivoSincronizacion
+{
+    Proceso = dto.Proceso,
+    FechaCarga = DateTimeHelper.GetMexicoDateTime(),  // Hora de México
+    // ...
+};
+```
+
+### Uso en Repositories
+**Al establecer fechas de auditoría en código (si no se usa trigger):**
+
+```csharp
+// ✅ CORRECTO
+entity.FechaInsercion = DateTimeHelper.GetMexicoDateTime();
+entity.FechaActualizacion = DateTimeHelper.GetMexicoDateTime();
+```
+
+### Uso en Background Services
+**Al registrar timestamps de ciclos y operaciones:**
+
+```csharp
+// ✅ CORRECTO
+_lastWarmupTime = DateTimeHelper.GetMexicoDateTime();
+_lastHealthCheckTime = DateTimeHelper.GetMexicoDateTime();
+```
+
+### ❌ NUNCA usar:
+```csharp
+// ❌ INCORRECTO - Hora del servidor (puede ser diferente)
+var fecha = DateTime.Now;
+
+// ❌ INCORRECTO - Hora UTC (no es la hora de México)
+var fecha = DateTime.UtcNow;
+
+// ❌ INCORRECTO - Constructor sin zona horaria
+var fecha = new DateTime(2025, 1, 1, 10, 0, 0);
+```
+
+### Reglas de Fechas
+- ✅ **TODAS las fechas en respuestas API** deben usar `DateTimeHelper.GetMexicoTimeString()` o `DateTimeHelper.GetMexicoDateTime()`
+- ✅ **TODAS las fechas guardadas en BD** deben usar `DateTimeHelper.GetMexicoDateTime()` (si se establecen en código)
+- ✅ **TODOS los timestamps en logs** deben usar hora de México cuando sea relevante
+- ✅ **TODOS los campos `Timestamp` en `ApiResponse`** deben usar `DateTimeHelper.GetMexicoTimeString()`
+- ✅ **TODOS los campos de fecha en objetos de respuesta** deben usar `DateTimeHelper.GetMexicoDateTime()`
+- ✅ **Background services** deben usar `DateTimeHelper.GetMexicoDateTime()` para timestamps de ciclos
+
+### Ejemplo Completo
+```csharp
+[HttpGet]
+public async Task<IActionResult> GetStats()
+{
+    var stats = new
+    {
+        ProcessId = Process.GetCurrentProcess().Id,
+        MemoryUsageMB = 150,
+        Timestamp = DateTimeHelper.GetMexicoDateTime()  // ✅ Hora de México
+    };
+
+    return Ok(new ApiResponse<object>
+    {
+        Success = true,
+        Data = stats,
+        Timestamp = DateTimeHelper.GetMexicoTimeString()  // ✅ String formateado
+    });
+}
+```
+
+## ⚙️ Configuración de Program.cs
+
+### Plantilla Base
+```csharp
+using {Company}.{Module}.Application.Services;
+using {Company}.{Module}.Domain.Interfaces;
+using {Company}.{Module}.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using Scalar.AspNetCore;
+using Serilog;
+using Shared.Infrastructure;
+using System.Text;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// URLs fijas
+builder.WebHost.UseUrls("https://localhost:5001", "http://localhost:5000");
+
+// Serilog
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+builder.Host.UseSerilog();
+
+// Servicios
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+
+// Swagger
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo
+    {
+        Title = "{Company} {Module} API",
+        Version = "v1",
+        Description = "API para {descripción del módulo}"
+    });
+
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Description = "JWT Authorization header using the Bearer scheme",
+        Name = "Authorization",
+        In = ParameterLocation.Header,
+        Type = SecuritySchemeType.ApiKey,
+        Scheme = "Bearer"
+    });
+
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+// JWT
+var jwtConfig = builder.Configuration.GetSection("Jwt").Get<JwtConfig>();
+if (jwtConfig == null || string.IsNullOrWhiteSpace(jwtConfig.Key))
+{
+    throw new InvalidOperationException("La configuración JWT no está completa en appsettings.json");
+}
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.Key)),
+            ValidateIssuer = !string.IsNullOrWhiteSpace(jwtConfig.Issuer),
+            ValidIssuer = string.IsNullOrWhiteSpace(jwtConfig.Issuer) ? null : jwtConfig.Issuer,
+            ValidateAudience = !string.IsNullOrWhiteSpace(jwtConfig.Audience),
+            ValidAudience = string.IsNullOrWhiteSpace(jwtConfig.Audience) ? null : jwtConfig.Audience,
+            ValidateLifetime = true
+        };
+    });
+
+builder.Services.AddAuthorization();
+
+// Oracle Connection Factory
+var connectionString = builder.Configuration.GetConnectionString("Oracle");
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    throw new InvalidOperationException("Connection string 'Oracle' no encontrada en appsettings.json");
+}
+
+builder.Services.AddScoped<IOracleConnectionFactory>(sp =>
+    new OracleConnectionFactory(connectionString, sp.GetService<ILogger<OracleConnectionFactory>>()));
+
+// Dependency Injection
+builder.Services.AddScoped<I{Entity}Repository, {Entity}Repository>();
+builder.Services.AddScoped<I{Entity}Service, {Entity}Service>();
+
+// CORS
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(policy =>
+    {
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
+    });
+});
+
+var app = builder.Build();
+
+// Pipeline
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "{Company} {Module} API v1");
+        c.RoutePrefix = "swagger";
+    });
+    
+    app.MapScalarApiReference(options =>
+    {
+        options
+            .WithTitle("{Company} {Module} API")
+            .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
+            .WithTheme(ScalarTheme.BluePlanet);
+    });
+}
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+
+Log.Information("🚀 {Company} {Module} API iniciada");
+app.Run();
+
+public class JwtConfig
+{
+    public string Key { get; set; } = string.Empty;
+    public string Issuer { get; set; } = string.Empty;
+    public string Audience { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+}
+```
+
+## 🔐 Seguridad y Autenticación
+
+### JWT Helpers
+Usar helpers de `Shared.Security`:
+```csharp
+var userId = JwtUserHelper.GetUserId(HttpContext.User);
+var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+```
+
+### Autorización
+```csharp
+[Authorize]
+[HttpGet]
+public async Task<ActionResult<ApiResponse<List<OrderDto>>>> GetOrders()
+{
+    // ...
+}
+
+[Authorize(Roles = "Admin")]
+[HttpDelete("{id}")]
+public async Task<ActionResult> DeleteOrder(int id)
+{
+    // ...
+}
+```
+
+### Validación de Inputs
+**TODOS los inputs deben ser validados con DataAnnotations o FluentValidation:**
+
+```csharp
+public class CreateOrderDto
+{
+    [Required(ErrorMessage = "CustomerId es requerido")]
+    [Range(1, int.MaxValue, ErrorMessage = "CustomerId debe ser mayor a 0")]
+    public int CustomerId { get; set; }
+
+    [Required(ErrorMessage = "Items es requerido")]
+    [MinLength(1, ErrorMessage = "La orden debe contener al menos un item")]
+    public List<OrderItemDto> Items { get; set; } = new();
+
+    [MaxLength(500, ErrorMessage = "Las notas no pueden exceder 500 caracteres")]
+    public string? Notes { get; set; }
+}
+```
+
+### Códigos HTTP Estándar
+- `200 OK` → Operación exitosa
+- `201 Created` → Recurso creado
+- `204 No Content` → Operación exitosa sin contenido
+- `400 Bad Request` → Error de validación
+- `401 Unauthorized` → No autenticado
+- `403 Forbidden` → Sin permisos
+- `404 Not Found` → Recurso no encontrado
+- `409 Conflict` → Conflicto (ej: duplicado)
+- `500 Internal Server Error` → Error del servidor
+
+### Seguridad - Reglas Críticas
+- ✅ **NO exponer** excepciones internas ni mensajes de Oracle en las respuestas
+- ✅ **NO almacenar** credenciales en código fuente
+- ✅ Usar **Azure Key Vault** o variables de entorno para secretos
+- ✅ Implementar **rate limiting** para prevenir abusos
+- ✅ Validar **TODOS** los inputs antes de procesar
+
+## 📝 Logging y Auditoría con Serilog
+
+### Configuración de Serilog
+**Serilog es el framework principal de logging en todas las APIs.**
+
+Configurar en `Program.cs`:
+```csharp
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .WriteTo.Console()
+    .WriteTo.File("Logs/log-.txt", rollingInterval: RollingInterval.Day)
+    .Enrich.FromLogContext()
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+```
+
+### Structured Logging por Capa
+
+**Controller - Inicio, fin y resultado de cada request:**
+```csharp
+[HttpPost]
+public async Task<ActionResult<ApiResponse<OrderDto>>> CreateOrder([FromBody] CreateOrderDto dto)
+{
+    var stopwatch = Stopwatch.StartNew();
+    var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+    var userId = JwtUserHelper.GetUserId(HttpContext.User);
+
+    _logger.LogInformation(
+        "Inicio de creación de orden. Usuario: {UserId}, CorrelationId: {CorrelationId}, Request: {@Request}",
+        userId, correlationId, dto);
+
+    try
+    {
+        var order = await _orderService.CreateOrderAsync(dto, userId, correlationId);
+        
+        stopwatch.Stop();
+        _logger.LogInformation(
+            "Orden {OrderId} creada exitosamente en {ElapsedMs}ms. Usuario: {UserId}",
+            order.Id, stopwatch.ElapsedMilliseconds, userId);
+
+        return CreatedAtAction(nameof(GetOrder), new { id = order.Id }, 
+            ApiResponse<OrderDto>.Success(order));
+    }
+    catch (BusinessValidationException ex)
+    {
+        stopwatch.Stop();
+        _logger.LogWarning(ex,
+            "Error de validación al crear orden en {ElapsedMs}ms. Usuario: {UserId}, Error: {Message}",
+            stopwatch.ElapsedMilliseconds, userId, ex.Message);
+        return BadRequest(ApiResponse<OrderDto>.Error(ex.Message));
+    }
+    catch (Exception ex)
+    {
+        stopwatch.Stop();
+        _logger.LogError(ex,
+            "Error inesperado al crear orden en {ElapsedMs}ms. Usuario: {UserId}",
+            stopwatch.ElapsedMilliseconds, userId);
+        return StatusCode(500, ApiResponse<OrderDto>.Error("Internal server error"));
+    }
+}
+```
+
+**Service - Operaciones de negocio relevantes:**
+```csharp
+public async Task<OrderDto> CreateOrderAsync(CreateOrderDto dto, string currentUser, string correlationId)
+{
+    _logger.LogInformation(
+        "Inicio de método {Method} para usuario {User}. CorrelationId: {CorrelationId}",
+        nameof(CreateOrderAsync), currentUser, correlationId);
+
+    // Validaciones de negocio
+    if (dto.Items == null || !dto.Items.Any())
+    {
+        _logger.LogWarning("Intento de crear orden sin items. Usuario: {User}", currentUser);
+        throw new BusinessValidationException("La orden debe contener al menos un item");
+    }
+
+    // ... lógica de negocio ...
+
+    _logger.LogInformation(
+        "Orden creada exitosamente. OrderId: {OrderId}, Usuario: {User}",
+        order.Id, currentUser);
+
+    return orderDto;
+}
+```
+
+**Repository - Consultas ejecutadas, parámetros y errores Oracle:**
+```csharp
+public async Task<Order?> GetByIdAsync(int id)
+{
+    const string query = "SELECT * FROM Orders WHERE Id = :Id";
+    
+    _logger.LogInformation("Ejecutando consulta {Query} con parámetros {@Params}",
+        nameof(GetByIdAsync), new { id });
+
+    try
+    {
+        // ... ejecución de consulta ...
+        
+        _logger.LogInformation("Consulta {Query} ejecutada exitosamente", nameof(GetByIdAsync));
+        return order;
+    }
+    catch (OracleException ex)
+    {
+        _logger.LogError(ex, 
+            "Error Oracle en {Method} con parámetros {@Params}. ErrorCode: {ErrorCode}",
+            nameof(GetByIdAsync), new { id }, ex.Number);
+        throw new DataAccessException("Error al acceder a la base de datos", ex);
+    }
+}
+```
+
+### Los logs deben incluir SIEMPRE:
+- ✅ Nombre del método
+- ✅ Usuario autenticado (si aplica)
+- ✅ Identificador de correlación (para trazabilidad)
+- ✅ Tiempo de ejecución (usar `Stopwatch`)
+- ✅ Parámetros de entrada (usar `@` para objetos complejos)
+
+### Structured Logging - Ejemplos Correctos
+```csharp
+// ✅ CORRECTO - Structured logging
+_logger.LogInformation("Order {OrderId} created successfully by user {UserId}", orderId, userId);
+_logger.LogError(ex, "Error creating order {OrderId} for user {UserId}", orderId, userId);
+_logger.LogWarning("Order {OrderId} has low stock. Current stock: {Stock}", orderId, stock);
+
+// ❌ INCORRECTO - String interpolation
+_logger.LogInformation($"Order {orderId} created successfully");
+_logger.LogError("Error creating order: " + ex.Message);
+```
+
+## ⚠️ Manejo de Errores y Excepciones
+
+### Excepciones por Capa
+
+**Repository - Capturar OracleException:**
+```csharp
+public async Task<{Entity}?> GetByIdAsync(int id)
+{
+    try
+    {
+        // ... operación de BD ...
+    }
+    catch (OracleException ex)
+    {
+        _logger.LogError(ex, "Error Oracle en {Method} con parámetros {@Params}",
+            nameof(GetByIdAsync), new { id });
+        throw new DataAccessException("Error al acceder a la base de datos", ex);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error inesperado en {Method}", nameof(GetByIdAsync));
+        throw;
+    }
+}
+```
+
+**Service - Capturar errores de negocio:**
+```csharp
+public async Task<{Entity}Dto> Create{Entity}Async(Create{Entity}Dto dto, string currentUser)
+{
+    try
+    {
+        // Validaciones de negocio
+        if (dto.Property == null)
+        {
+            throw new BusinessValidationException("Property es requerido");
+        }
+
+        // ... lógica de negocio ...
+    }
+    catch (BusinessValidationException)
+    {
+        // Re-lanzar excepciones de negocio
+        throw;
+    }
+    catch (DataAccessException)
+    {
+        // Re-lanzar excepciones de acceso a datos
+        throw;
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error inesperado en {Method}", nameof(Create{Entity}Async));
+        throw new BusinessException("Error al procesar la operación", ex);
+    }
+}
+```
+
+**Controller - Capturar excepciones globales:**
+```csharp
+[HttpPost]
+public async Task<ActionResult<ApiResponse<{Entity}Dto>>> Create{Entity}([FromBody] Create{Entity}Dto dto)
+{
+    try
+    {
+        var userId = JwtUserHelper.GetUserId(HttpContext.User);
+        var entity = await _{entity}Service.Create{Entity}Async(dto, userId);
+        return CreatedAtAction(nameof(Get{Entity}), new { id = entity.Id }, 
+            ApiResponse<{Entity}Dto>.Success(entity));
+    }
+    catch (BusinessValidationException ex)
+    {
+        return BadRequest(ApiResponse<{Entity}Dto>.Error(ex.Message));
+    }
+    catch (NotFoundException ex)
+    {
+        return NotFound(ApiResponse<{Entity}Dto>.Error(ex.Message));
+    }
+    catch (DataAccessException ex)
+    {
+        _logger.LogError(ex, "Error de acceso a datos");
+        return StatusCode(500, ApiResponse<{Entity}Dto>.Error("Error al acceder a la base de datos"));
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error inesperado");
+        return StatusCode(500, ApiResponse<{Entity}Dto>.Error("Internal server error"));
+    }
+}
+```
+
+### Excepciones Específicas de Shared.Exceptions
+```csharp
+// ✅ CORRECTO
+if (entity == null)
+{
+    throw new NotFoundException($"Entity with id {id} not found");
+}
+
+if (entity.Status == EntityStatus.Invalid)
+{
+    throw new BusinessValidationException("Cannot perform operation on invalid entity");
+}
+
+// ❌ INCORRECTO
+throw new Exception("Entity not found");
+```
+
+### Middleware de Manejo de Excepciones Globales
+```csharp
+public class ExceptionHandlingMiddleware
+{
+    private readonly RequestDelegate _next;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
+
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
+    {
+        _next = next;
+        _logger = logger;
+    }
+
+    public async Task InvokeAsync(HttpContext context)
+    {
+        try
+        {
+            await _next(context);
+        }
+        catch (BusinessValidationException ex)
+        {
+            _logger.LogWarning(ex, "Business error: {Message}", ex.Message);
+            await HandleExceptionAsync(context, ex, StatusCodes.Status400BadRequest);
+        }
+        catch (NotFoundException ex)
+        {
+            _logger.LogWarning(ex, "Not found error: {Message}", ex.Message);
+            await HandleExceptionAsync(context, ex, StatusCodes.Status404NotFound);
+        }
+        catch (DataAccessException ex)
+        {
+            _logger.LogError(ex, "Data access error: {Message}", ex.Message);
+            await HandleExceptionAsync(context, ex, StatusCodes.Status500InternalServerError);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unhandled error: {Message}", ex.Message);
+            await HandleExceptionAsync(context, ex, StatusCodes.Status500InternalServerError);
+        }
+    }
+
+    private static async Task HandleExceptionAsync(HttpContext context, Exception exception, int statusCode)
+    {
+        context.Response.StatusCode = statusCode;
+        context.Response.ContentType = "application/json";
+
+        var response = ApiResponse<object>.Error(exception.Message);
+        await context.Response.WriteAsJsonAsync(response);
+    }
+}
+```
+
+**Registrar en Program.cs:**
+```csharp
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+```
+
+## 🔄 Async/Await
+
+### Siempre usar async/await
+```csharp
+public async Task<EntityDto> GetEntityByIdAsync(int id)
+{
+    return await _repository.GetByIdAsync(id);
+}
+```
+
+### Sufijo Async
+Todos los métodos asíncronos deben terminar en `Async`:
+- ✅ `GetOrderByIdAsync`
+- ✅ `CreateOrderAsync`
+- ❌ `GetOrderById`
+- ❌ `CreateOrder`
+
+## 📦 Dependencias entre Capas
+
+### Reglas de Dependencias
+- **API** → Application, Domain, Shared.*
+- **Application** → Domain, Shared.*
+- **Domain** → Solo Shared.Contracts (si es necesario)
+- **Infrastructure** → Domain, Shared.Infrastructure
+
+### NO crear dependencias circulares
+- Domain NO debe depender de Application o Infrastructure
+- Application NO debe depender de Infrastructure
+
+## 🎯 Reglas Generales
+
+1. **50-100 endpoints por módulo** (ideal)
+2. **Nomenclatura consistente:** `{Company}.{Module}.{Layer}`
+3. **Shared solo si 2+ módulos lo necesitan**
+4. **Endpoints:** `/api/v1/{company}/{module}/{resource}` (kebab-case)
+5. **Siempre usar `ApiResponse<T>` en controllers**
+6. **Siempre usar async/await con sufijo `Async`**
+7. **Siempre usar structured logging**
+8. **Siempre usar excepciones específicas del dominio**
+9. **Cada API tiene sus propios `appsettings.json`**
+10. **Siempre usar Dapper como ORM** - NO Entity Framework ni ADO.NET puro
+
+## 📋 Checklist de Revisión de Código
+
+Antes de hacer commit, verificar:
+
+### Arquitectura y Estructura
+- [ ] ¿Nomenclatura correcta (`{Company}.{Module}.{Layer}`)?
+- [ ] ¿Estructura de carpetas correcta?
+- [ ] ¿Dependencias entre capas correctas?
+- [ ] ¿No hay dependencias circulares?
+
+### Código y Convenciones
+- [ ] ¿Usa async/await correctamente?
+- [ ] ¿Los métodos async tienen sufijo `Async`?
+- [ ] ¿Uso de `ApiResponse<T>` en controllers?
+- [ ] ¿Route attributes con formato `/api/v1/{company}/{module}/{resource}`?
+- [ ] ¿Validación de DTOs con DataAnnotations?
+
+### Dapper + Oracle
+- [ ] ¿Usa Dapper (`QueryAsync`, `ExecuteAsync`) en lugar de `OracleCommand`?
+- [ ] ¿Las conexiones Oracle usan `using` y `CreateConnectionAsync`?
+- [ ] ¿Las queries están parametrizadas con objetos anónimos o `DynamicParameters`?
+- [ ] ¿Usa transacciones para operaciones múltiples?
+- [ ] ¿Maneja `OracleException` correctamente?
+- [ ] ¿Los SELECT usan alias para mapear a propiedades de la entidad?
+
+### Logging y Auditoría
+- [ ] ¿Hay logging en cada capa (Controller, Service, Repository)?
+- [ ] ¿Usa structured logging (NO string interpolation)?
+- [ ] ¿Incluye usuario, correlationId y tiempo de ejecución?
+- [ ] ¿Se registra auditoría (usuario + fecha)?
+
+### Manejo de Errores
+- [ ] ¿Los errores se manejan correctamente por capa?
+- [ ] ¿Usa excepciones específicas (NO `Exception` genérica)?
+- [ ] ¿NO expone excepciones internas en respuestas?
+
+### Seguridad
+- [ ] ¿Implementa autenticación JWT?
+- [ ] ¿Usa `[Authorize]` donde corresponde?
+- [ ] ¿NO hay credenciales hardcodeadas?
+- [ ] ¿Validación de inputs implementada?
+
+### Documentación
+- [ ] ¿La documentación Swagger está actualizada?
+- [ ] ¿Los nombres son descriptivos y consistentes?
+- [ ] ¿Los DTOs están separados de las entidades?
+
+## 🚫 Anti-patrones a Evitar
+
+### ❌ NUNCA hacer:
+
+```csharp
+// ❌ Usar OracleCommand en lugar de Dapper
+using var command = new OracleCommand(sql, connection);
+command.Parameters.Add(":Id", OracleDbType.Int32).Value = id;
+using var reader = await command.ExecuteReaderAsync();
+
+// ❌ SQL Injection vulnerability
+string query = $"SELECT * FROM Users WHERE Id = {id}";
+
+// ❌ Conexión sin using
+var connection = new OracleConnection(_connectionString);
+connection.Open();
+// ... operaciones ...
+// ¡Conexión nunca se cierra!
+
+// ❌ Código síncrono en API
+public User GetUser(int id) { /* ... */ }
+
+// ❌ Exponer excepciones internas
+catch (Exception ex)
+{
+    return BadRequest(ex.ToString()); // ❌ MAL
+}
+
+// ❌ Sin logging
+public async Task<User> GetUserAsync(int id)
+{
+    return await _repository.GetByIdAsync(id); // ❌ Sin logs
+}
+
+// ❌ Credenciales hardcodeadas
+var connectionString = "User Id=admin;Password=123456;..."; // ❌ MAL
+
+// ❌ String interpolation en logging
+_logger.LogInformation($"Order {orderId} created"); // ❌ MAL
+
+// ❌ Exception genérica
+throw new Exception("Error occurred"); // ❌ MAL
+
+// ❌ Sin parametrizar consultas
+command.CommandText = $"SELECT * FROM Users WHERE Id = {id}"; // ❌ MAL
+```
+
+### Reglas Generales a Evitar
+- ❌ NO crear dependencias circulares
+- ❌ NO poner lógica de negocio en controllers
+- ❌ NO poner lógica de negocio en repositories
+- ❌ NO usar `Exception` genérica
+- ❌ NO usar string interpolation en logging
+- ❌ NO crear módulos con >100 endpoints
+- ❌ NO poner código específico de módulo en Shared
+- ❌ NO usar nombres inconsistentes
+- ❌ NO mantener conexiones abiertas fuera de `using`
+- ❌ NO exponer mensajes de Oracle en respuestas
+- ❌ NO almacenar credenciales en código fuente
+
+## ✅ Ejemplos de Estructura Correcta
+
+### Controller
+```csharp
+[ApiController]
+[Route("api/v1/gm/catalog-sync/products")]
+public class ProductsController : ControllerBase
+{
+    private readonly IProductService _productService;
+    private readonly ILogger<ProductsController> _logger;
+
+    public ProductsController(IProductService productService, ILogger<ProductsController> logger)
+    {
+        _productService = productService;
+        _logger = logger;
+    }
+
+    [HttpGet]
+    public async Task<ActionResult<ApiResponse<List<ProductDto>>>> GetProducts()
+    {
+        var products = await _productService.GetAllProductsAsync();
+        return Ok(ApiResponse<List<ProductDto>>.Success(products));
+    }
+}
+```
+
+### Service
+```csharp
+public class ProductService : IProductService
+{
+    private readonly IProductRepository _repository;
+    private readonly ILogger<ProductService> _logger;
+
+    public ProductService(IProductRepository repository, ILogger<ProductService> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    public async Task<ProductDto?> GetProductByIdAsync(int id)
+    {
+        var product = await _repository.GetByIdAsync(id);
+        if (product == null)
+        {
+            _logger.LogWarning("Product {ProductId} not found", id);
+            return null;
+        }
+        return MapToDto(product);
+    }
+}
+```
+
+## 🧩 Principios Finales
+
+Cursor debe garantizar que **TODAS** las APIs nuevas cumplan con:
+
+- ✅ Uso de **Dapper** como ORM (NO Entity Framework ni ADO.NET puro)
+- ✅ Uso de **Serilog** para logging principal
+- ✅ Código **asíncrono**, limpio y desacoplado
+- ✅ Manejo correcto de **errores y excepciones** por capa
+- ✅ **Auditoría** garantizada (fechas + usuario)
+- ✅ Conexiones Oracle **seguras y eficientes** (using, Dapper, parametrizadas)
+- ✅ Estructura **ordenada y mantenible**
+- ✅ Cumplimiento de estándares **REST** y seguridad **JWT**
+- ✅ **Documentación** completa con Swagger y Scalar
+- ✅ **Performance** optimizado (Dapper, connection pool, async)
+- ✅ **Validación** de todos los inputs
+- ✅ **Structured logging** en todas las capas
+
+## 📚 Referencias
+
+- Documentación completa: `docs/ARCHITECTURE.md`
+- Plantilla de módulos: `docs/MODULE_TEMPLATE.md`
+- Convenciones de código: `docs/CODING_CONVENTIONS.md`
+- [Serilog Documentation](https://serilog.net/)
+- [Oracle.ManagedDataAccess.Core](https://www.oracle.com/database/technologies/appdev/dotnet/odp.html)
+- [ASP.NET Core Best Practices](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/best-practices)
+
