@@ -39,6 +39,7 @@ public class GetFotoDealerProductosController : ControllerBase
     /// - `cargaArchivoSincronizacionId`: Filtrar por ID de carga de archivo de sincronización
     /// - `dealerBac`: Filtrar por código BAC del dealer (búsqueda parcial)
     /// - `dms`: Filtrar por sistema DMS (búsqueda parcial)
+    /// - `sincronizado`: Filtrar por estado de sincronización (0 = no sincronizado, 1 = sincronizado). Si no se envía, retorna todos.
     /// 
     /// **Ejemplos de uso:**
     /// - GET /api/v1/gm/catalog-sync/foto-dealer-productos
@@ -54,6 +55,7 @@ public class GetFotoDealerProductosController : ControllerBase
     /// - `fechaCarga`: Fecha de carga del archivo (desde CO_CARGAARCHIVOSINCRONIZACION)
     /// - `fechaSincronizacion`: Fecha de sincronización (desde CO_SINCRONIZACIONARCHIVOSDEALERS, puede ser null si no existe registro)
     /// - `tiempoSincronizacionHoras`: Tiempo de sincronización en horas (calculado: FechaSincronizacion - FechaCarga, puede ser null si no existe fechaSincronizacion, ej: 0.97)
+    /// - `sincronizado`: Indica si el registro está sincronizado (1 = sincronizado, 0 = no sincronizado). Calculado: 1 si fechaSincronizacion tiene valor, 0 si es null.
     /// - `dealerBac`: Código BAC del dealer
     /// - `nombreDealer`: Nombre comercial del dealer
     /// - `razonSocialDealer`: Razón social legal del dealer
@@ -69,6 +71,7 @@ public class GetFotoDealerProductosController : ControllerBase
     /// <param name="cargaArchivoSincronizacionId">Filtrar por ID de carga de archivo de sincronización</param>
     /// <param name="dealerBac">Filtrar por código BAC del dealer (búsqueda parcial)</param>
     /// <param name="dms">Filtrar por sistema DMS (búsqueda parcial)</param>
+    /// <param name="sincronizado">Filtrar por estado de sincronización (0 = no sincronizado, 1 = sincronizado). Si no se envía, retorna todos.</param>
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
     /// <returns>Lista de registros de fotos de dealer productos con información de paginación</returns>
@@ -81,6 +84,7 @@ public class GetFotoDealerProductosController : ControllerBase
         [FromQuery] int? cargaArchivoSincronizacionId = null,
         [FromQuery] string? dealerBac = null,
         [FromQuery] string? dms = null,
+        [FromQuery] int? sincronizado = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
     {
@@ -90,13 +94,14 @@ public class GetFotoDealerProductosController : ControllerBase
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] 🔷 Inicio GET /foto-dealer-productos. Filtros: CargaArchivoSincId={CargaId}, DealerBac={DealerBac}, DMS={Dms}, Página={Page}, PageSize={PageSize}",
-                correlationId, cargaArchivoSincronizacionId?.ToString() ?? "null", dealerBac ?? "null", dms ?? "null", page, pageSize);
+                "[{CorrelationId}] 🔷 Inicio GET /foto-dealer-productos. Filtros: CargaArchivoSincId={CargaId}, DealerBac={DealerBac}, DMS={Dms}, Sincronizado={Sincronizado}, Página={Page}, PageSize={PageSize}",
+                correlationId, cargaArchivoSincronizacionId?.ToString() ?? "null", dealerBac ?? "null", dms ?? "null", sincronizado?.ToString() ?? "null", page, pageSize);
 
             var (resultados, totalRecords) = await _service.ObtenerTodosConFiltrosAsync(
                 cargaArchivoSincronizacionId,
                 dealerBac,
                 dms,
+                sincronizado,
                 page,
                 pageSize);
 

@@ -9,6 +9,15 @@ using Shared.Infrastructure;
 namespace GM.CatalogSync.Infrastructure.Repositories;
 
 /// <summary>
+/// Clase auxiliar para mapear información de carga de archivo.
+/// </summary>
+internal class CargaArchivoInfo
+{
+    public int CargaArchivoSincronizacionId { get; set; }
+    public int DealersTotales { get; set; }
+}
+
+/// <summary>
 /// Clase auxiliar para mapear resultados de JOIN con CO_CARGAARCHIVOSINCRONIZACION.
 /// </summary>
 internal class SincArchivoDealerMap
@@ -366,7 +375,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
             try
             {
                 // 1. Validar que existe el CargaArchivoSincronizacionId y obtener DealersTotales
-                var cargaInfo = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                var cargaInfo = await connection.QueryFirstOrDefaultAsync<CargaArchivoInfo>(
                     sqlObtenerCarga,
                     new { CargaArchivoSincronizacionId = entidad.CargaArchivoSincronizacionId },
                     transaction);
@@ -437,7 +446,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 if (filasActualizadas == 0)
                 {
                     _logger.LogWarning(
-                        "⚠️ [REPOSITORY] No se actualizó ningún registro de carga. COCA_CARGAARCHIVOSINID: {CargaId}",
+                        "⚠️ [REPOSITORY] No se actualizaron contadores de dealers. COCA_CARGAARCHIVOSINID: {CargaId}",
                         cargaArchivoSincronizacionId);
                 }
                 else

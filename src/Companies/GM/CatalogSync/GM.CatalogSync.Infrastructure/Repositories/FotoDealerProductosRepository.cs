@@ -126,7 +126,11 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL AND c.COCA_FECHACARGA IS NOT NULL 
                     THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
                     ELSE NULL
-                END as TiempoSincronizacionHoras
+                END as TiempoSincronizacionHoras,
+                CASE 
+                    WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
+                    ELSE 0
+                END as Sincronizado
             FROM CO_FOTODEALERPRODUCTOS f
             INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
             LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
@@ -163,6 +167,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
+        int? sincronizado = null,
         int page = 1,
         int pageSize = 200)
     {
@@ -199,8 +204,29 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                 parameters.Add("Dms", $"%{dms}%");
             }
 
-            // Obtener total de registros
-            var countSql = $"SELECT COUNT(*) FROM {TABLA} f {whereClause}";
+            // Filtro por sincronizado (0 = no sincronizado, 1 = sincronizado)
+            if (sincronizado.HasValue)
+            {
+                if (sincronizado.Value == 0)
+                {
+                    // No sincronizado: fechaSincronizacion IS NULL
+                    whereClause += " AND s.COSA_FECHASINCRONIZACION IS NULL";
+                }
+                else if (sincronizado.Value == 1)
+                {
+                    // Sincronizado: fechaSincronizacion IS NOT NULL
+                    whereClause += " AND s.COSA_FECHASINCRONIZACION IS NOT NULL";
+                }
+            }
+
+            // Obtener total de registros (necesita incluir los JOINs para el filtro de sincronizado)
+            var countSql = $@"
+                SELECT COUNT(*) 
+                FROM {TABLA} f
+                INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
+                LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
+                    AND f.COFD_COCA_CARGAARCHIVOSINID = s.COSA_COCA_CARGAARCHIVOSINID
+                {whereClause}";
             var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
             if (totalRecords == 0)
@@ -237,6 +263,10 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                             THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
                             ELSE NULL
                         END as TiempoSincronizacionHoras,
+                        CASE 
+                            WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
+                            ELSE 0
+                        END as Sincronizado,
                         ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPRODUCTOSID DESC) AS RNUM
                     FROM {TABLA} f
                     INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
@@ -367,6 +397,10 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                             THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
                             ELSE NULL
                         END as TiempoSincronizacionHoras,
+                        CASE 
+                            WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
+                            ELSE 0
+                        END as Sincronizado,
                         ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPRODUCTOSID DESC) AS RNUM
                     FROM {TABLA} f
                     INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID

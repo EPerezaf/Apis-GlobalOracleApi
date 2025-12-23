@@ -403,6 +403,53 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
         }
     }
 
+    /// <inheritdoc />
+    public async Task<int> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion,
+        System.Data.IDbTransaction transaction)
+    {
+        const string sqlUpdate = @"
+            UPDATE CO_CARGAARCHIVOSINCRONIZACION
+            SET 
+                COCA_DEALERSTOTALES = (
+                    SELECT COUNT(DISTINCT COSA_DEALERBAC)
+                    FROM CO_FOTODEALERPRODUCTOS
+                    WHERE COFD_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
+                ),
+                FECHAMODIFICACION = SYSDATE,
+                USUARIOMODIFICACION = :UsuarioModificacion
+            WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Actualizando DealersTotales en transacción. ID: {Id}, Usuario: {Usuario}",
+                cargaArchivoSincronizacionId, usuarioModificacion);
+
+            var parametros = new DynamicParameters();
+            parametros.Add("CargaArchivoSincronizacionId", cargaArchivoSincronizacionId);
+            parametros.Add("UsuarioModificacion", usuarioModificacion);
+
+            // Usar la conexión de la transacción
+            var connection = (Oracle.ManagedDataAccess.Client.OracleConnection)transaction.Connection!;
+            var filasAfectadas = await connection.ExecuteAsync(sqlUpdate, parametros, transaction);
+
+            _logger.LogInformation(
+                "✅ [REPOSITORY] DealersTotales actualizado exitosamente en transacción. ID: {Id}, Filas afectadas: {Filas}",
+                cargaArchivoSincronizacionId, filasAfectadas);
+
+            return filasAfectadas;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex,
+                "❌ [REPOSITORY] Error Oracle al actualizar DealersTotales en transacción. ID: {Id}, ErrorCode: {ErrorCode}",
+                cargaArchivoSincronizacionId, ex.Number);
+            throw new DataAccessException("Error al actualizar DealersTotales en la base de datos", ex);
+        }
+    }
+
     /// <summary>
     /// Mapea el resultado de la consulta a la entidad.
     /// </summary>

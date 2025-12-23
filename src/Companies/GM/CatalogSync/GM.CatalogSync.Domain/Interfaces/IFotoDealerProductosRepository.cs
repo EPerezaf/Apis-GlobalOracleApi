@@ -61,10 +61,17 @@ public interface IFotoDealerProductosRepository
     /// <summary>
     /// Obtiene todos los registros con filtros y datos completos del JOIN (incluye FechaSincronizacion y TiempoSincronizacionHoras).
     /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">Filtro por ID de carga (opcional)</param>
+    /// <param name="dealerBac">Filtro por código BAC del dealer (opcional)</param>
+    /// <param name="dms">Filtro por sistema DMS (opcional)</param>
+    /// <param name="sincronizado">Filtro por estado de sincronización: null=todos, 0=no sincronizados, 1=sincronizados (opcional)</param>
+    /// <param name="page">Número de página (por defecto: 1)</param>
+    /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
     Task<(List<FotoDealerProductosMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
+        int? sincronizado = null,
         int page = 1,
         int pageSize = 200);
 }
@@ -90,5 +97,6 @@ public class FotoDealerProductosMap
     public DateTime? FechaCarga { get; set; }
     public DateTime? FechaSincronizacion { get; set; }
     public decimal? TiempoSincronizacionHoras { get; set; }
+    public int Sincronizado { get; set; }
 }
 

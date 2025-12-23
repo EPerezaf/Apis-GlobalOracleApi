@@ -71,5 +71,17 @@ public interface ICargaArchivoSincRepository
     Task<int> ActualizarDealersTotalesAsync(
         int cargaArchivoSincronizacionId,
         string usuarioModificacion);
+
+    /// <summary>
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos dentro de una transacción existente.
+    /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
+    /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>
+    /// <param name="transaction">Transacción existente (debe estar activa)</param>
+    /// <returns>Número de filas afectadas</returns>
+    Task<int> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion,
+        System.Data.IDbTransaction transaction);
 }
 

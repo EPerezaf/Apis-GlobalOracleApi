@@ -47,14 +47,16 @@ public class FotoDealerProductosService : IFotoDealerProductosService
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
+        int? sincronizado = null,
         int page = 1,
         int pageSize = 200)
     {
         _logger.LogInformation(
-            "🔷 [SERVICE] Obteniendo fotos dealer productos con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Página: {Page}, PageSize: {PageSize}",
+            "🔷 [SERVICE] Obteniendo fotos dealer productos con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Sincronizado: {Sincronizado}, Página: {Page}, PageSize: {PageSize}",
             cargaArchivoSincronizacionId?.ToString() ?? "null",
             dealerBac ?? "null",
             dms ?? "null",
+            sincronizado?.ToString() ?? "null",
             page,
             pageSize);
 
@@ -62,6 +64,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
             cargaArchivoSincronizacionId,
             dealerBac,
             dms,
+            sincronizado,
             page,
             pageSize);
 
