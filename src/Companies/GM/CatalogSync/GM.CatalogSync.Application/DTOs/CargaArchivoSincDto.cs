@@ -43,6 +43,21 @@ public class CargaArchivoSincDto
     public bool Actual { get; set; }
 
     /// <summary>
+    /// Número total de dealers a sincronizar.
+    /// </summary>
+    public int DealersTotales { get; set; }
+
+    /// <summary>
+    /// Número de dealers sincronizados.
+    /// </summary>
+    public int? DealersSincronizados { get; set; }
+
+    /// <summary>
+    /// Porcentaje de dealers sincronizados.
+    /// </summary>
+    public decimal? PorcDealersSinc { get; set; }
+
+    /// <summary>
     /// Fecha de alta del registro.
     /// </summary>
     public DateTime FechaAlta { get; set; }
@@ -102,6 +117,13 @@ public class CrearCargaArchivoSincDto
     [Required(ErrorMessage = "El número de registros es requerido")]
     [Range(0, int.MaxValue, ErrorMessage = "El número de registros debe ser mayor o igual a 0")]
     public int Registros { get; set; }
+
+    /// <summary>
+    /// Número total de dealers a sincronizar.
+    /// </summary>
+    [Required(ErrorMessage = "El número de dealers totales es requerido")]
+    [Range(0, int.MaxValue, ErrorMessage = "El número de dealers totales debe ser mayor o igual a 0")]
+    public int DealersTotales { get; set; }
 }
 
 /// <summary>

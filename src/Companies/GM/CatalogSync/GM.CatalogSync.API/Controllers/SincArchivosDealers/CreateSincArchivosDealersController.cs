@@ -5,6 +5,7 @@ using GM.CatalogSync.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
+using Shared.Exceptions;
 using Shared.Security;
 
 namespace GM.CatalogSync.API.Controllers.SincArchivosDealers;
@@ -36,9 +37,18 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// <remarks>
     /// Este endpoint permite registrar una nueva sincronización de archivos para un dealer específico.
     /// 
+    /// **Funcionalidad de la transacción:**
+    /// - Automáticamente actualiza los contadores en `CO_CARGAARCHIVOSINCRONIZACION`:
+    ///   - `COCA_DEALERSSONCRONIZADOS`: Cuenta total de dealers sincronizados para el `idCarga`
+    ///   - `COCA_PORCDEALERSSINC`: Porcentaje calculado (DealersSincronizados / DealersTotales * 100)
+    /// - Si falla cualquier operación, se hace ROLLBACK completo (no se crea el registro ni se actualizan contadores)
+    /// - Garantiza consistencia de datos (todo o nada)
+    /// 
     /// **Validaciones:**
     /// - La combinación de `proceso`, `idCarga` y `dealerBac` debe ser única (constraint UQ_COSA_PROCESO_CARGA_DEALER)
     /// - Si ya existe un registro con la misma combinación, retorna error 409 Conflict
+    /// - Debe existir un registro de carga activo (`COCA_ACTUAL=1`) con el `idCarga` especificado
+    /// - Si no existe el registro de carga, retorna error 404 Not Found
     /// 
     /// **Campos obligatorios:**
     /// - `proceso`: Nombre del proceso de sincronización (ej: "ProductsCatalog")
@@ -104,19 +114,29 @@ public class CreateSincArchivosDealersController : ControllerBase
             // Validar modelo
             if (!ModelState.IsValid)
             {
-                var errores = ModelState.Values
-                    .SelectMany(v => v.Errors)
-                    .Select(e => e.ErrorMessage)
+                var errores = ModelState
+                    .Where(ms => ms.Value?.Errors.Count > 0)
+                    .SelectMany(ms => ms.Value!.Errors.Select(e => new ErrorDetail
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Field = ms.Key,
+                        Message = e.ErrorMessage,
+                        Details = new Dictionary<string, object>
+                        {
+                            { "attemptedValue", ms.Value.AttemptedValue?.ToString() ?? "N/A" }
+                        }
+                    }))
                     .ToList();
 
                 _logger.LogWarning(
-                    "[{CorrelationId}] ⚠️ Validación fallida. Errores: {@Errores}",
-                    correlationId, errores);
+                    "[{CorrelationId}] ⚠️ Validación fallida. {Cantidad} error(es) encontrado(s)",
+                    correlationId, errores.Count);
 
                 return BadRequest(new ApiResponse
                 {
                     Success = false,
-                    Message = string.Join("; ", errores),
+                    Message = $"Se encontraron {errores.Count} error(es) de validación. Revise los detalles en 'errors'.",
+                    Errors = errores,
                     Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
             }
@@ -125,7 +145,7 @@ public class CreateSincArchivosDealersController : ControllerBase
 
             stopwatch.Stop();
             _logger.LogInformation(
-                "[{CorrelationId}] ✅ POST /sinc-archivos-dealers completado en {ElapsedMs}ms. ID: {Id}, Proceso: {Proceso}, DealerBac: {DealerBac}",
+                "[{CorrelationId}] ✅ POST /sinc-archivos-dealers completado en {ElapsedMs}ms. ID: {Id}, Proceso: {Proceso}, DealerBac: {DealerBac}. Contadores actualizados automáticamente.",
                 correlationId, stopwatch.ElapsedMilliseconds, resultado.SincArchivoDealerId, resultado.Proceso, resultado.DealerBac);
 
             return CreatedAtAction(
@@ -135,10 +155,39 @@ public class CreateSincArchivosDealersController : ControllerBase
                 new ApiResponse<SincArchivoDealerDto>
                 {
                     Success = true,
-                    Message = "Registro de sincronización creado exitosamente",
+                    Message = "Registro de sincronización creado exitosamente. Los contadores de dealers sincronizados se actualizaron automáticamente.",
                     Data = resultado,
                     Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
+        }
+        catch (NotFoundException ex)
+        {
+            stopwatch.Stop();
+            _logger.LogWarning(
+                "[{CorrelationId}] ⚠️ Registro de carga no encontrado: {Mensaje}. Tiempo: {ElapsedMs}ms",
+                correlationId, ex.Message, stopwatch.ElapsedMilliseconds);
+
+            return NotFound(new ApiResponse
+            {
+                Success = false,
+                Message = ex.Message,
+                Errors = new List<ErrorDetail>
+                {
+                    new ErrorDetail
+                    {
+                        Code = "CARGA_NOT_FOUND",
+                        Field = "idCarga",
+                        Message = ex.Message,
+                        Details = new Dictionary<string, object>
+                        {
+                            { "resourceName", ex.ResourceName },
+                            { "resourceId", ex.ResourceId ?? "N/A" },
+                            { "suggestion", "Verifique que el idCarga existe y que el registro de carga esté activo (COCA_ACTUAL=1)" }
+                        }
+                    }
+                },
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
         }
         catch (SincArchivoDealerDuplicadoException ex)
         {
@@ -151,6 +200,23 @@ public class CreateSincArchivosDealersController : ControllerBase
             {
                 Success = false,
                 Message = ex.Message,
+                Errors = new List<ErrorDetail>
+                {
+                    new ErrorDetail
+                    {
+                        Code = "DUPLICATE_RECORD",
+                        Field = "(proceso, idCarga, dealerBac)",
+                        Message = ex.Message,
+                        Details = new Dictionary<string, object>
+                        {
+                            { "proceso", ex.Proceso },
+                            { "idCarga", ex.IdCarga },
+                            { "dealerBac", ex.DealerBac },
+                            { "constraint", "UQ_COSA_PROCESO_CARGA_DEALER" },
+                            { "suggestion", "La combinación de proceso, idCarga y dealerBac debe ser única. Verifique si ya existe un registro con estos valores." }
+                        }
+                    }
+                },
                 Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }
@@ -165,6 +231,18 @@ public class CreateSincArchivosDealersController : ControllerBase
             {
                 Success = false,
                 Message = ex.Message,
+                Errors = new List<ErrorDetail>
+                {
+                    new ErrorDetail
+                    {
+                        Code = "VALIDATION_ERROR",
+                        Message = ex.Message,
+                        Details = new Dictionary<string, object>
+                        {
+                            { "suggestion", "Revise los campos requeridos y sus formatos según la documentación del endpoint" }
+                        }
+                    }
+                },
                 Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }

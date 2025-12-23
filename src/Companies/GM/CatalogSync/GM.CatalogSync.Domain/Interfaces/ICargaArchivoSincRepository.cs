@@ -45,5 +45,21 @@ public interface ICargaArchivoSincRepository
     Task<CargaArchivoSincronizacion> CrearConTransaccionAsync(
         CargaArchivoSincronizacion entidad,
         string usuarioAlta);
+
+    /// <summary>
+    /// Actualiza los contadores de dealers sincronizados y porcentaje en una transacción existente.
+    /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
+    /// <param name="dealersSincronizados">Número de dealers sincronizados</param>
+    /// <param name="porcDealersSinc">Porcentaje de dealers sincronizados</param>
+    /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>
+    /// <param name="transaction">Transacción existente (debe estar activa)</param>
+    /// <returns>Número de filas afectadas</returns>
+    Task<int> ActualizarContadoresDealersAsync(
+        int cargaArchivoSincronizacionId,
+        int dealersSincronizados,
+        decimal porcDealersSinc,
+        string usuarioModificacion,
+        System.Data.IDbTransaction transaction);
 }
 

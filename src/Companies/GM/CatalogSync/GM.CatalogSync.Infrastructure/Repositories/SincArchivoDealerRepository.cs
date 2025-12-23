@@ -15,6 +15,7 @@ namespace GM.CatalogSync.Infrastructure.Repositories;
 public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 {
     private readonly IOracleConnectionFactory _connectionFactory;
+    private readonly ICargaArchivoSincRepository _cargaArchivoSincRepository;
     private readonly ILogger<SincArchivoDealerRepository> _logger;
 
     private const string TABLA = "CO_SINCRONIZACIONARCHIVOSDEALERS";
@@ -22,9 +23,11 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 
     public SincArchivoDealerRepository(
         IOracleConnectionFactory connectionFactory,
+        ICargaArchivoSincRepository cargaArchivoSincRepository,
         ILogger<SincArchivoDealerRepository> logger)
     {
         _connectionFactory = connectionFactory;
+        _cargaArchivoSincRepository = cargaArchivoSincRepository;
         _logger = logger;
     }
 
@@ -203,7 +206,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
     /// <inheritdoc />
     public async Task<SincArchivoDealer> CrearAsync(SincArchivoDealer entidad, string usuarioAlta)
     {
-        const string sql = @"
+        const string sqlInsert = @"
             INSERT INTO CO_SINCRONIZACIONARCHIVOSDEALERS (
                 COSA_SINCARCHIVODEALERID,
                 COSA_PROCESO,
@@ -228,42 +231,138 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 :UsuarioAlta
             ) RETURNING COSA_SINCARCHIVODEALERID INTO :Id";
 
+        // SQL para obtener COCA_CARGAARCHIVOSINID y COCA_DEALERSTOTALES a partir de IdCarga
+        const string sqlObtenerCarga = @"
+            SELECT 
+                COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
+                COCA_DEALERSTOTALES as DealersTotales
+            FROM CO_CARGAARCHIVOSINCRONIZACION
+            WHERE COCA_IDCARGA = :IdCarga
+            AND COCA_ACTUAL = 1";
+
+        // SQL para contar dealers sincronizados
+        const string sqlContarDealers = @"
+            SELECT COUNT(*)
+            FROM CO_SINCRONIZACIONARCHIVOSDEALERS
+            WHERE COSA_IDCARGA = :IdCarga";
+
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Creando registro de sincronización. Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}, Usuario: {Usuario}",
+                "🗄️ [REPOSITORY] Iniciando creación de registro de sincronización con actualización automática de contadores. Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}, Usuario: {Usuario}",
                 entidad.Proceso, entidad.IdCarga, entidad.DealerBac, usuarioAlta);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
+            using var transaction = connection.BeginTransaction();
 
-            var parameters = new DynamicParameters();
-            parameters.Add("Proceso", entidad.Proceso);
-            parameters.Add("IdCarga", entidad.IdCarga);
-            parameters.Add("DmsOrigen", entidad.DmsOrigen);
-            parameters.Add("DealerBac", entidad.DealerBac);
-            parameters.Add("NombreDealer", entidad.NombreDealer);
-            parameters.Add("FechaSincronizacion", entidad.FechaSincronizacion);
-            parameters.Add("RegistrosSincronizados", entidad.RegistrosSincronizados);
-            parameters.Add("UsuarioAlta", usuarioAlta);
-            parameters.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
-
-            await connection.ExecuteAsync(sql, parameters);
-
-            var nuevoId = parameters.Get<int>("Id");
-
-            _logger.LogInformation(
-                "✅ [REPOSITORY] Registro de sincronización creado exitosamente. ID: {Id}, Proceso: {Proceso}, DealerBac: {DealerBac}",
-                nuevoId, entidad.Proceso, entidad.DealerBac);
-
-            // Obtener el registro creado
-            var registroCreado = await ObtenerPorIdAsync(nuevoId);
-
-            if (registroCreado == null)
+            try
             {
-                throw new DataAccessException("No se pudo obtener el registro recién creado");
-            }
+                // 1. Obtener COCA_CARGAARCHIVOSINID y COCA_DEALERSTOTALES a partir de IdCarga
+                var cargaInfo = await connection.QueryFirstOrDefaultAsync<dynamic>(
+                    sqlObtenerCarga,
+                    new { IdCarga = entidad.IdCarga },
+                    transaction);
 
-            return registroCreado;
+                if (cargaInfo == null)
+                {
+                    _logger.LogWarning(
+                        "⚠️ [REPOSITORY] No se encontró registro de carga con IdCarga: {IdCarga} y COCA_ACTUAL=1",
+                        entidad.IdCarga);
+                    throw new NotFoundException(
+                        $"No se encontró un registro de carga activo con IdCarga '{entidad.IdCarga}'",
+                        "CargaArchivoSincronizacion",
+                        entidad.IdCarga);
+                }
+
+                int cargaArchivoSincronizacionId = cargaInfo.CargaArchivoSincronizacionId;
+                int dealersTotales = cargaInfo.DealersTotales;
+
+                _logger.LogInformation(
+                    "📊 [REPOSITORY] Carga encontrada. COCA_CARGAARCHIVOSINID: {CargaId}, DealersTotales: {DealersTotales}",
+                    cargaArchivoSincronizacionId, dealersTotales);
+
+                // 2. Insertar registro de sincronización
+                var parametersInsert = new DynamicParameters();
+                parametersInsert.Add("Proceso", entidad.Proceso);
+                parametersInsert.Add("IdCarga", entidad.IdCarga);
+                parametersInsert.Add("DmsOrigen", entidad.DmsOrigen);
+                parametersInsert.Add("DealerBac", entidad.DealerBac);
+                parametersInsert.Add("NombreDealer", entidad.NombreDealer);
+                parametersInsert.Add("FechaSincronizacion", entidad.FechaSincronizacion);
+                parametersInsert.Add("RegistrosSincronizados", entidad.RegistrosSincronizados);
+                parametersInsert.Add("UsuarioAlta", usuarioAlta);
+                parametersInsert.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
+
+                await connection.ExecuteAsync(sqlInsert, parametersInsert, transaction);
+
+                var nuevoId = parametersInsert.Get<int>("Id");
+
+                _logger.LogInformation(
+                    "✅ [REPOSITORY] Registro de sincronización creado. ID: {Id}",
+                    nuevoId);
+
+                // 3. Contar dealers sincronizados (incluyendo el recién insertado)
+                var dealersSincronizados = await connection.ExecuteScalarAsync<int>(
+                    sqlContarDealers,
+                    new { IdCarga = entidad.IdCarga },
+                    transaction);
+
+                // 4. Calcular porcentaje
+                decimal porcDealersSinc = 0.00m;
+                if (dealersTotales > 0)
+                {
+                    porcDealersSinc = Math.Round((decimal)dealersSincronizados / dealersTotales * 100, 2);
+                }
+
+                _logger.LogInformation(
+                    "📊 [REPOSITORY] Contadores calculados. DealersSincronizados: {DealersSinc}, DealersTotales: {DealersTotales}, PorcDealersSinc: {Porc}%",
+                    dealersSincronizados, dealersTotales, porcDealersSinc);
+
+                // 5. Actualizar contadores en CO_CARGAARCHIVOSINCRONIZACION usando el repositorio correspondiente
+                var filasActualizadas = await _cargaArchivoSincRepository.ActualizarContadoresDealersAsync(
+                    cargaArchivoSincronizacionId,
+                    dealersSincronizados,
+                    porcDealersSinc,
+                    usuarioAlta,
+                    transaction);
+
+                if (filasActualizadas == 0)
+                {
+                    _logger.LogWarning(
+                        "⚠️ [REPOSITORY] No se actualizó ningún registro de carga. COCA_CARGAARCHIVOSINID: {CargaId}",
+                        cargaArchivoSincronizacionId);
+                }
+                else
+                {
+                    _logger.LogInformation(
+                        "✅ [REPOSITORY] Contadores actualizados en CO_CARGAARCHIVOSINCRONIZACION. COCA_CARGAARCHIVOSINID: {CargaId}",
+                        cargaArchivoSincronizacionId);
+                }
+
+                // 6. Commit de la transacción
+                transaction.Commit();
+
+                _logger.LogInformation(
+                    "✅ [REPOSITORY] Transacción completada exitosamente. Registro ID: {Id}, Contadores actualizados: DealersSincronizados={DealersSinc}, PorcDealersSinc={Porc}%",
+                    nuevoId, dealersSincronizados, porcDealersSinc);
+
+                // Obtener el registro creado
+                var registroCreado = await ObtenerPorIdAsync(nuevoId);
+
+                if (registroCreado == null)
+                {
+                    throw new DataAccessException("No se pudo obtener el registro recién creado");
+                }
+
+                return registroCreado;
+            }
+            catch (Exception)
+            {
+                // Rollback en caso de error
+                transaction.Rollback();
+                _logger.LogError("❌ [REPOSITORY] Rollback ejecutado debido a error en la transacción");
+                throw;
+            }
         }
         catch (OracleException ex)
         {

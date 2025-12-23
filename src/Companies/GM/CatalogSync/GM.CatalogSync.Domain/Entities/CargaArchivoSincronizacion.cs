@@ -48,6 +48,24 @@ public class CargaArchivoSincronizacion
     /// </summary>
     public bool Actual { get; set; }
 
+    /// <summary>
+    /// Número total de dealers a sincronizar.
+    /// Columna: COCA_DEALERSTOTALES (NOT NULL, default 0)
+    /// </summary>
+    public int DealersTotales { get; set; }
+
+    /// <summary>
+    /// Número de dealers sincronizados.
+    /// Columna: COCA_DEALERSSONCRONIZADOS (nullable, default 0)
+    /// </summary>
+    public int? DealersSincronizados { get; set; }
+
+    /// <summary>
+    /// Porcentaje de dealers sincronizados.
+    /// Columna: COCA_PORCDEALERSSINC (NUMBER(5,2), nullable, default 0.00)
+    /// </summary>
+    public decimal? PorcDealersSinc { get; set; }
+
     // ========================================
     // CAMPOS DE AUDITORÍA
     // ========================================

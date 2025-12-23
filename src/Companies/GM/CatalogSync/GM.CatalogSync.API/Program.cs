@@ -254,6 +254,10 @@ builder.Services.AddScoped<ICargaArchivoSincService, CargaArchivoSincService>();
 builder.Services.AddScoped<ISincArchivoDealerRepository, SincArchivoDealerRepository>();
 builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
 
+// Foto de Dealer Productos
+builder.Services.AddScoped<IFotoDealerProductosRepository, FotoDealerProductosRepository>();
+builder.Services.AddScoped<IFotoDealerProductosService, FotoDealerProductosService>();
+
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
 builder.Services.AddSingleton<PerformanceMonitor>();

@@ -4,6 +4,7 @@
     <ProjectReference Include="..\GM.CatalogSync.Domain\GM.CatalogSync.Domain.csproj" />
     <ProjectReference Include="..\..\..\..\Shared\Shared.Contracts\Shared.Contracts.csproj" />
     <ProjectReference Include="..\..\..\..\Shared\Shared.Exceptions\Shared.Exceptions.csproj" />
+    <ProjectReference Include="..\..\..\..\Shared\Shared.Security\Shared.Security.csproj" />
   </ItemGroup>
 
   <ItemGroup>

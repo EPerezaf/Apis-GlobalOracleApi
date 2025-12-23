@@ -40,6 +40,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 COCA_IDCARGA as IdCarga,
                 COCA_REGISTROS as Registros,
                 COCA_ACTUAL as Actual,
+                COCA_DEALERSTOTALES as DealersTotales,
+                COCA_DEALERSSONCRONIZADOS as DealersSincronizados,
+                COCA_PORCDEALERSSINC as PorcDealersSinc,
                 FECHAALTA as FechaAlta,
                 USUARIOALTA as UsuarioAlta,
                 FECHAMODIFICACION as FechaModificacion,
@@ -134,6 +137,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                         COCA_IDCARGA as IdCarga,
                         COCA_REGISTROS as Registros,
                         COCA_ACTUAL as Actual,
+                        COCA_DEALERSTOTALES as DealersTotales,
+                        COCA_DEALERSSONCRONIZADOS as DealersSincronizados,
+                        COCA_PORCDEALERSSINC as PorcDealersSinc,
                         FECHAALTA as FechaAlta,
                         USUARIOALTA as UsuarioAlta,
                         FECHAMODIFICACION as FechaModificacion,
@@ -209,6 +215,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 COCA_IDCARGA,
                 COCA_REGISTROS,
                 COCA_ACTUAL,
+                COCA_DEALERSTOTALES,
+                COCA_DEALERSSONCRONIZADOS,
+                COCA_PORCDEALERSSINC,
                 FECHAALTA,
                 USUARIOALTA
             ) VALUES (
@@ -219,6 +228,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 :IdCarga,
                 :Registros,
                 1,
+                :DealersTotales,
+                0,
+                0.00,
                 SYSDATE,
                 :UsuarioAlta
             ) RETURNING COCA_CARGAARCHIVOSINID INTO :Id";
@@ -255,6 +267,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 parametrosInsert.Add("FechaCarga", entidad.FechaCarga);
                 parametrosInsert.Add("IdCarga", entidad.IdCarga);
                 parametrosInsert.Add("Registros", entidad.Registros);
+                parametrosInsert.Add("DealersTotales", entidad.DealersTotales);
                 parametrosInsert.Add("UsuarioAlta", usuarioAlta);
                 parametrosInsert.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
@@ -296,6 +309,53 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
         }
     }
 
+    /// <inheritdoc />
+    public async Task<int> ActualizarContadoresDealersAsync(
+        int cargaArchivoSincronizacionId,
+        int dealersSincronizados,
+        decimal porcDealersSinc,
+        string usuarioModificacion,
+        System.Data.IDbTransaction transaction)
+    {
+        const string sqlUpdate = @"
+            UPDATE CO_CARGAARCHIVOSINCRONIZACION
+            SET 
+                COCA_DEALERSSONCRONIZADOS = :DealersSincronizados,
+                COCA_PORCDEALERSSINC = :PorcDealersSinc,
+                FECHAMODIFICACION = SYSDATE,
+                USUARIOMODIFICACION = :UsuarioModificacion
+            WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Actualizando contadores de dealers. ID: {Id}, DealersSincronizados: {DealersSinc}, PorcDealersSinc: {Porc}",
+                cargaArchivoSincronizacionId, dealersSincronizados, porcDealersSinc);
+
+            var parametros = new DynamicParameters();
+            parametros.Add("CargaArchivoSincronizacionId", cargaArchivoSincronizacionId);
+            parametros.Add("DealersSincronizados", dealersSincronizados);
+            parametros.Add("PorcDealersSinc", porcDealersSinc);
+            parametros.Add("UsuarioModificacion", usuarioModificacion);
+
+            var filasAfectadas = await ((Oracle.ManagedDataAccess.Client.OracleConnection)transaction.Connection!)
+                .ExecuteAsync(sqlUpdate, parametros, transaction);
+
+            _logger.LogInformation(
+                "✅ [REPOSITORY] Contadores actualizados exitosamente. ID: {Id}, Filas afectadas: {Filas}",
+                cargaArchivoSincronizacionId, filasAfectadas);
+
+            return filasAfectadas;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex,
+                "❌ [REPOSITORY] Error Oracle al actualizar contadores. ID: {Id}, ErrorCode: {ErrorCode}",
+                cargaArchivoSincronizacionId, ex.Number);
+            throw new DataAccessException("Error al actualizar los contadores de dealers en la base de datos", ex);
+        }
+    }
+
     /// <summary>
     /// Mapea el resultado de la consulta a la entidad.
     /// </summary>
@@ -310,6 +370,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
             IdCarga = map.IdCarga ?? string.Empty,
             Registros = map.Registros,
             Actual = map.Actual == 1,
+            DealersTotales = map.DealersTotales,
+            DealersSincronizados = map.DealersSincronizados,
+            PorcDealersSinc = map.PorcDealersSinc,
             FechaAlta = map.FechaAlta,
             UsuarioAlta = map.UsuarioAlta ?? string.Empty,
             FechaModificacion = map.FechaModificacion,
@@ -329,6 +392,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
         public string? IdCarga { get; set; }
         public int Registros { get; set; }
         public int Actual { get; set; } // Oracle NUMBER(1) se mapea como int
+        public int DealersTotales { get; set; }
+        public int? DealersSincronizados { get; set; }
+        public decimal? PorcDealersSinc { get; set; }
         public DateTime FechaAlta { get; set; }
         public string? UsuarioAlta { get; set; }
         public DateTime? FechaModificacion { get; set; }

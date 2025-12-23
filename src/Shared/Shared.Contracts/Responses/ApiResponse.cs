@@ -20,6 +20,10 @@ namespace Shared.Contracts.Responses
         [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
         public PaginationInfo? Pagination { get; set; }
 
+        [JsonPropertyName("errors")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public List<ErrorDetail>? Errors { get; set; }
+
         [JsonPropertyName("timestamp")]
         public string Timestamp { get; set; } = string.Empty;
     }
@@ -47,6 +51,25 @@ namespace Shared.Contracts.Responses
 
         [JsonPropertyName("totalPages")]
         public int TotalPages { get; set; } = 1;
+    }
+
+    /// <summary>
+    /// Detalle de un error en la respuesta
+    /// </summary>
+    public class ErrorDetail
+    {
+        [JsonPropertyName("code")]
+        public string Code { get; set; } = string.Empty;
+
+        [JsonPropertyName("field")]
+        public string? Field { get; set; }
+
+        [JsonPropertyName("message")]
+        public string Message { get; set; } = string.Empty;
+
+        [JsonPropertyName("details")]
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Dictionary<string, object>? Details { get; set; }
     }
 }
 
