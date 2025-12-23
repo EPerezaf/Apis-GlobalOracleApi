@@ -1,19 +1,19 @@
 namespace GM.CatalogSync.Application.Exceptions;
 
 /// <summary>
-/// Excepción cuando ya existe un registro con la misma combinación proceso, idCarga y dealerBac.
+/// Excepción cuando ya existe un registro con la misma combinación proceso, cargaArchivoSincronizacionId y dealerBac.
 /// </summary>
 public class SincArchivoDealerDuplicadoException : Exception
 {
     public string Proceso { get; }
-    public string IdCarga { get; }
+    public int CargaArchivoSincronizacionId { get; }
     public string DealerBac { get; }
 
-    public SincArchivoDealerDuplicadoException(string proceso, string idCarga, string dealerBac)
-        : base($"Ya existe un registro para el proceso '{proceso}', carga '{idCarga}' y dealer '{dealerBac}'")
+    public SincArchivoDealerDuplicadoException(string proceso, int cargaArchivoSincronizacionId, string dealerBac)
+        : base($"Ya existe un registro para el proceso '{proceso}', cargaArchivoSincronizacionId '{cargaArchivoSincronizacionId}' y dealer '{dealerBac}'")
     {
         Proceso = proceso;
-        IdCarga = idCarga;
+        CargaArchivoSincronizacionId = cargaArchivoSincronizacionId;
         DealerBac = dealerBac;
     }
 }

@@ -16,14 +16,14 @@ public interface ISincArchivoDealerService
     /// Obtiene todos los registros con filtros opcionales y paginación.
     /// </summary>
     /// <param name="proceso">Filtro por proceso (opcional)</param>
-    /// <param name="idCarga">Filtro por ID de carga (opcional)</param>
+    /// <param name="cargaArchivoSincronizacionId">Filtro por ID de carga de archivo de sincronización (opcional)</param>
     /// <param name="dealerBac">Filtro por código BAC del dealer (opcional)</param>
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
     /// <returns>Tupla con la lista de registros y el total de registros</returns>
     Task<(List<SincArchivoDealerDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         string? proceso = null,
-        string? idCarga = null,
+        int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         int page = 1,
         int pageSize = 200);

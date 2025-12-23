@@ -9,6 +9,29 @@ using Shared.Infrastructure;
 namespace GM.CatalogSync.Infrastructure.Repositories;
 
 /// <summary>
+/// Clase auxiliar para mapear resultados de JOIN con CO_CARGAARCHIVOSINCRONIZACION.
+/// </summary>
+internal class SincArchivoDealerMap
+{
+    public int SincArchivoDealerId { get; set; }
+    public string Proceso { get; set; } = string.Empty;
+    public int CargaArchivoSincronizacionId { get; set; }
+    public string DmsOrigen { get; set; } = string.Empty;
+    public string DealerBac { get; set; } = string.Empty;
+    public string NombreDealer { get; set; } = string.Empty;
+    public DateTime FechaSincronizacion { get; set; }
+    public int RegistrosSincronizados { get; set; }
+    public DateTime FechaAlta { get; set; }
+    public string UsuarioAlta { get; set; } = string.Empty;
+    public DateTime? FechaModificacion { get; set; }
+    public string? UsuarioModificacion { get; set; }
+    public string? IdCarga { get; set; }
+    public string? ProcesoCarga { get; set; }
+    public DateTime? FechaCarga { get; set; }
+    public decimal? TiempoSincronizacionHoras { get; set; }
+}
+
+/// <summary>
 /// Repository para acceso a datos de Sincronización de Archivos por Dealer usando Dapper.
 /// Tabla: CO_SINCRONIZACIONARCHIVOSDEALERS
 /// </summary>
@@ -36,20 +59,25 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
     {
         const string sql = @"
             SELECT 
-                COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
-                COSA_PROCESO as Proceso,
-                COSA_IDCARGA as IdCarga,
-                COSA_DMSORIGEN as DmsOrigen,
-                COSA_DEALERBAC as DealerBac,
-                COSA_NOMBREDEALER as NombreDealer,
-                COSA_FECHASINCRONIZACION as FechaSincronizacion,
-                COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
-                FECHAALTA as FechaAlta,
-                USUARIOALTA as UsuarioAlta,
-                FECHAMODIFICACION as FechaModificacion,
-                USUARIOMODIFICACION as UsuarioModificacion
-            FROM CO_SINCRONIZACIONARCHIVOSDEALERS
-            WHERE COSA_SINCARCHIVODEALERID = :Id";
+                s.COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
+                s.COSA_PROCESO as Proceso,
+                s.COSA_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
+                s.COSA_DMSORIGEN as DmsOrigen,
+                s.COSA_DEALERBAC as DealerBac,
+                s.COSA_NOMBREDEALER as NombreDealer,
+                s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                s.FECHAALTA as FechaAlta,
+                s.USUARIOALTA as UsuarioAlta,
+                s.FECHAMODIFICACION as FechaModificacion,
+                s.USUARIOMODIFICACION as UsuarioModificacion,
+                c.COCA_IDCARGA as IdCarga,
+                c.COCA_PROCESO as ProcesoCarga,
+                c.COCA_FECHACARGA as FechaCarga,
+                ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2) as TiempoSincronizacionHoras
+            FROM CO_SINCRONIZACIONARCHIVOSDEALERS s
+            INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON s.COSA_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
+            WHERE s.COSA_SINCARCHIVODEALERID = :Id";
 
         try
         {
@@ -57,7 +85,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var resultado = await connection.QueryFirstOrDefaultAsync<SincArchivoDealer>(sql, new { Id = id });
+            var resultado = await connection.QueryFirstOrDefaultAsync<SincArchivoDealerMap>(sql, new { Id = id });
 
             if (resultado == null)
             {
@@ -65,8 +93,27 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 return null;
             }
 
+            // Mapear a entidad (sin los campos del JOIN)
+            var entidad = new SincArchivoDealer
+            {
+                SincArchivoDealerId = resultado.SincArchivoDealerId,
+                Proceso = resultado.Proceso,
+                CargaArchivoSincronizacionId = resultado.CargaArchivoSincronizacionId,
+                DmsOrigen = resultado.DmsOrigen,
+                DealerBac = resultado.DealerBac,
+                NombreDealer = resultado.NombreDealer,
+                FechaSincronizacion = resultado.FechaSincronizacion,
+                RegistrosSincronizados = resultado.RegistrosSincronizados,
+                FechaAlta = resultado.FechaAlta,
+                UsuarioAlta = resultado.UsuarioAlta,
+                FechaModificacion = resultado.FechaModificacion,
+                UsuarioModificacion = resultado.UsuarioModificacion
+            };
+
+            // Guardar datos del JOIN en un campo adicional (usando un diccionario o clase auxiliar)
+            // Por ahora, los datos del JOIN se obtendrán en el servicio mediante una consulta adicional
             _logger.LogInformation("✅ [REPOSITORY] Registro de sincronización con ID {Id} obtenido exitosamente", id);
-            return resultado;
+            return entidad;
         }
         catch (OracleException ex)
         {
@@ -79,7 +126,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
     /// <inheritdoc />
     public async Task<(List<SincArchivoDealer> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         string? proceso = null,
-        string? idCarga = null,
+        int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         int page = 1,
         int pageSize = 200)
@@ -87,8 +134,8 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Consultando registros de sincronización - Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}, Página: {Page}, PageSize: {PageSize}",
-                proceso ?? "Todos", idCarga ?? "Todos", dealerBac ?? "Todos", page, pageSize);
+                "🗄️ [REPOSITORY] Consultando registros de sincronización - Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}, Página: {Page}, PageSize: {PageSize}",
+                proceso ?? "Todos", cargaArchivoSincronizacionId?.ToString() ?? "Todos", dealerBac ?? "Todos", page, pageSize);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -101,10 +148,10 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 parameters.Add("Proceso", $"%{proceso}%");
             }
 
-            if (!string.IsNullOrWhiteSpace(idCarga))
+            if (cargaArchivoSincronizacionId.HasValue)
             {
-                whereClause += " AND UPPER(COSA_IDCARGA) LIKE UPPER(:IdCarga)";
-                parameters.Add("IdCarga", $"%{idCarga}%");
+                whereClause += " AND COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId";
+                parameters.Add("CargaArchivoSincronizacionId", cargaArchivoSincronizacionId.Value);
             }
 
             if (!string.IsNullOrWhiteSpace(dealerBac))
@@ -131,25 +178,47 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
             var sql = $@"
                 SELECT * FROM (
                     SELECT 
-                        COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
-                        COSA_PROCESO as Proceso,
-                        COSA_IDCARGA as IdCarga,
-                        COSA_DMSORIGEN as DmsOrigen,
-                        COSA_DEALERBAC as DealerBac,
-                        COSA_NOMBREDEALER as NombreDealer,
-                        COSA_FECHASINCRONIZACION as FechaSincronizacion,
-                        COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
-                        FECHAALTA as FechaAlta,
-                        USUARIOALTA as UsuarioAlta,
-                        FECHAMODIFICACION as FechaModificacion,
-                        USUARIOMODIFICACION as UsuarioModificacion,
-                        ROW_NUMBER() OVER (ORDER BY COSA_FECHASINCRONIZACION DESC) AS RNUM
-                    FROM {TABLA}
+                        s.COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
+                        s.COSA_PROCESO as Proceso,
+                        s.COSA_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
+                        s.COSA_DMSORIGEN as DmsOrigen,
+                        s.COSA_DEALERBAC as DealerBac,
+                        s.COSA_NOMBREDEALER as NombreDealer,
+                        s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                        s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                        s.FECHAALTA as FechaAlta,
+                        s.USUARIOALTA as UsuarioAlta,
+                        s.FECHAMODIFICACION as FechaModificacion,
+                        s.USUARIOMODIFICACION as UsuarioModificacion,
+                        c.COCA_IDCARGA as IdCarga,
+                        c.COCA_PROCESO as ProcesoCarga,
+                        c.COCA_FECHACARGA as FechaCarga,
+                        ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2) as TiempoSincronizacionHoras,
+                        ROW_NUMBER() OVER (ORDER BY s.COSA_FECHASINCRONIZACION DESC) AS RNUM
+                    FROM {TABLA} s
+                    INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON s.COSA_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
                     {whereClause}
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
 
-            var resultados = await connection.QueryAsync<SincArchivoDealer>(sql, parameters);
-            var lista = resultados.ToList();
+            var resultados = await connection.QueryAsync<SincArchivoDealerMap>(sql, parameters);
+            var lista = resultados.Select(r => new SincArchivoDealer
+            {
+                SincArchivoDealerId = r.SincArchivoDealerId,
+                Proceso = r.Proceso,
+                CargaArchivoSincronizacionId = r.CargaArchivoSincronizacionId,
+                DmsOrigen = r.DmsOrigen,
+                DealerBac = r.DealerBac,
+                NombreDealer = r.NombreDealer,
+                FechaSincronizacion = r.FechaSincronizacion,
+                RegistrosSincronizados = r.RegistrosSincronizados,
+                FechaAlta = r.FechaAlta,
+                UsuarioAlta = r.UsuarioAlta,
+                FechaModificacion = r.FechaModificacion,
+                UsuarioModificacion = r.UsuarioModificacion
+            }).ToList();
+
+            // Guardar datos del JOIN en un diccionario para acceso posterior
+            // Los datos del JOIN se obtendrán en el servicio mediante una consulta adicional
 
             _logger.LogInformation("✅ [REPOSITORY] Se obtuvieron {Cantidad} registros de sincronización de {Total} totales (Página {Page})", 
                 lista.Count, totalRecords, page);
@@ -164,40 +233,79 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
     }
 
     /// <inheritdoc />
-    public async Task<bool> ExisteRegistroAsync(string proceso, string idCarga, string dealerBac)
+    public async Task<bool> ExisteRegistroAsync(string proceso, int cargaArchivoSincronizacionId, string dealerBac)
     {
         const string sql = @"
             SELECT COUNT(1) 
             FROM CO_SINCRONIZACIONARCHIVOSDEALERS 
             WHERE COSA_PROCESO = :Proceso 
-            AND COSA_IDCARGA = :IdCarga
+            AND COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
             AND COSA_DEALERBAC = :DealerBac";
 
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Verificando existencia de registro - Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}",
-                proceso, idCarga, dealerBac);
+                "🗄️ [REPOSITORY] Verificando existencia de registro - Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}",
+                proceso, cargaArchivoSincronizacionId, dealerBac);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
             var count = await connection.ExecuteScalarAsync<int>(sql, new 
             { 
                 Proceso = proceso, 
-                IdCarga = idCarga, 
+                CargaArchivoSincronizacionId = cargaArchivoSincronizacionId, 
                 DealerBac = dealerBac 
             });
 
             var existe = count > 0;
             _logger.LogInformation(
-                "✅ [REPOSITORY] Registro (Proceso: '{Proceso}', IdCarga: '{IdCarga}', DealerBac: '{DealerBac}') existe: {Existe}",
-                proceso, idCarga, dealerBac, existe);
+                "✅ [REPOSITORY] Registro (Proceso: '{Proceso}', CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: '{DealerBac}') existe: {Existe}",
+                proceso, cargaArchivoSincronizacionId, dealerBac, existe);
 
             return existe;
         }
         catch (OracleException ex)
         {
             _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle al verificar existencia. ErrorCode: {ErrorCode}",
+                ex.Number);
+            throw new DataAccessException("Error al acceder a la base de datos", ex);
+        }
+    }
+
+    /// <summary>
+    /// Verifica si existe un registro de carga de archivo de sincronización con el ID especificado.
+    /// </summary>
+    public async Task<bool> ExisteCargaArchivoSincronizacionIdAsync(int cargaArchivoSincronizacionId)
+    {
+        const string sql = @"
+            SELECT COUNT(1) 
+            FROM CO_CARGAARCHIVOSINCRONIZACION 
+            WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
+            AND COCA_ACTUAL = 1";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Verificando existencia de CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}",
+                cargaArchivoSincronizacionId);
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var count = await connection.ExecuteScalarAsync<int>(sql, new 
+            { 
+                CargaArchivoSincronizacionId = cargaArchivoSincronizacionId
+            });
+
+            var existe = count > 0;
+            _logger.LogInformation(
+                "✅ [REPOSITORY] CargaArchivoSincronizacionId {CargaArchivoSincronizacionId} existe: {Existe}",
+                cargaArchivoSincronizacionId, existe);
+
+            return existe;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle al verificar CargaArchivoSincronizacionId. ErrorCode: {ErrorCode}",
                 ex.Number);
             throw new DataAccessException("Error al acceder a la base de datos", ex);
         }
@@ -210,7 +318,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
             INSERT INTO CO_SINCRONIZACIONARCHIVOSDEALERS (
                 COSA_SINCARCHIVODEALERID,
                 COSA_PROCESO,
-                COSA_IDCARGA,
+                COSA_COCA_CARGAARCHIVOSINID,
                 COSA_DMSORIGEN,
                 COSA_DEALERBAC,
                 COSA_NOMBREDEALER,
@@ -221,7 +329,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
             ) VALUES (
                 SEQ_COSA_SINCARCHIVODEALERID.NEXTVAL,
                 :Proceso,
-                :IdCarga,
+                :CargaArchivoSincronizacionId,
                 :DmsOrigen,
                 :DealerBac,
                 :NombreDealer,
@@ -231,47 +339,47 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 :UsuarioAlta
             ) RETURNING COSA_SINCARCHIVODEALERID INTO :Id";
 
-        // SQL para obtener COCA_CARGAARCHIVOSINID y COCA_DEALERSTOTALES a partir de IdCarga
+        // SQL para obtener COCA_DEALERSTOTALES a partir de CargaArchivoSincronizacionId
         const string sqlObtenerCarga = @"
             SELECT 
                 COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                 COCA_DEALERSTOTALES as DealersTotales
             FROM CO_CARGAARCHIVOSINCRONIZACION
-            WHERE COCA_IDCARGA = :IdCarga
+            WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
             AND COCA_ACTUAL = 1";
 
         // SQL para contar dealers sincronizados
         const string sqlContarDealers = @"
             SELECT COUNT(*)
             FROM CO_SINCRONIZACIONARCHIVOSDEALERS
-            WHERE COSA_IDCARGA = :IdCarga";
+            WHERE COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId";
 
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Iniciando creación de registro de sincronización con actualización automática de contadores. Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}, Usuario: {Usuario}",
-                entidad.Proceso, entidad.IdCarga, entidad.DealerBac, usuarioAlta);
+                "🗄️ [REPOSITORY] Iniciando creación de registro de sincronización con actualización automática de contadores. Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}, Usuario: {Usuario}",
+                entidad.Proceso, entidad.CargaArchivoSincronizacionId, entidad.DealerBac, usuarioAlta);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
 
             try
             {
-                // 1. Obtener COCA_CARGAARCHIVOSINID y COCA_DEALERSTOTALES a partir de IdCarga
+                // 1. Validar que existe el CargaArchivoSincronizacionId y obtener DealersTotales
                 var cargaInfo = await connection.QueryFirstOrDefaultAsync<dynamic>(
                     sqlObtenerCarga,
-                    new { IdCarga = entidad.IdCarga },
+                    new { CargaArchivoSincronizacionId = entidad.CargaArchivoSincronizacionId },
                     transaction);
 
                 if (cargaInfo == null)
                 {
                     _logger.LogWarning(
-                        "⚠️ [REPOSITORY] No se encontró registro de carga con IdCarga: {IdCarga} y COCA_ACTUAL=1",
-                        entidad.IdCarga);
+                        "⚠️ [REPOSITORY] No se encontró registro de carga con CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId} y COCA_ACTUAL=1",
+                        entidad.CargaArchivoSincronizacionId);
                     throw new NotFoundException(
-                        $"No se encontró un registro de carga activo con IdCarga '{entidad.IdCarga}'",
+                        $"No se encontró un registro de carga activo con CargaArchivoSincronizacionId {entidad.CargaArchivoSincronizacionId}",
                         "CargaArchivoSincronizacion",
-                        entidad.IdCarga);
+                        entidad.CargaArchivoSincronizacionId.ToString());
                 }
 
                 int cargaArchivoSincronizacionId = cargaInfo.CargaArchivoSincronizacionId;
@@ -284,7 +392,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 // 2. Insertar registro de sincronización
                 var parametersInsert = new DynamicParameters();
                 parametersInsert.Add("Proceso", entidad.Proceso);
-                parametersInsert.Add("IdCarga", entidad.IdCarga);
+                parametersInsert.Add("CargaArchivoSincronizacionId", entidad.CargaArchivoSincronizacionId);
                 parametersInsert.Add("DmsOrigen", entidad.DmsOrigen);
                 parametersInsert.Add("DealerBac", entidad.DealerBac);
                 parametersInsert.Add("NombreDealer", entidad.NombreDealer);
@@ -304,7 +412,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 // 3. Contar dealers sincronizados (incluyendo el recién insertado)
                 var dealersSincronizados = await connection.ExecuteScalarAsync<int>(
                     sqlContarDealers,
-                    new { IdCarga = entidad.IdCarga },
+                    new { CargaArchivoSincronizacionId = entidad.CargaArchivoSincronizacionId },
                     transaction);
 
                 // 4. Calcular porcentaje

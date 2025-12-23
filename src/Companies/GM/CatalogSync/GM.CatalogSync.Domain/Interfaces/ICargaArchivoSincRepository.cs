@@ -61,5 +61,15 @@ public interface ICargaArchivoSincRepository
         decimal porcDealersSinc,
         string usuarioModificacion,
         System.Data.IDbTransaction transaction);
+
+    /// <summary>
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos.
+    /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
+    /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>
+    /// <returns>Número de filas afectadas</returns>
+    Task<int> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion);
 }
 

@@ -338,8 +338,9 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
             parametros.Add("PorcDealersSinc", porcDealersSinc);
             parametros.Add("UsuarioModificacion", usuarioModificacion);
 
-            var filasAfectadas = await ((Oracle.ManagedDataAccess.Client.OracleConnection)transaction.Connection!)
-                .ExecuteAsync(sqlUpdate, parametros, transaction);
+            // Usar la conexión de la transacción
+            var connection = (Oracle.ManagedDataAccess.Client.OracleConnection)transaction.Connection!;
+            var filasAfectadas = await connection.ExecuteAsync(sqlUpdate, parametros, transaction);
 
             _logger.LogInformation(
                 "✅ [REPOSITORY] Contadores actualizados exitosamente. ID: {Id}, Filas afectadas: {Filas}",
@@ -353,6 +354,52 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 "❌ [REPOSITORY] Error Oracle al actualizar contadores. ID: {Id}, ErrorCode: {ErrorCode}",
                 cargaArchivoSincronizacionId, ex.Number);
             throw new DataAccessException("Error al actualizar los contadores de dealers en la base de datos", ex);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<int> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion)
+    {
+        const string sqlUpdate = @"
+            UPDATE CO_CARGAARCHIVOSINCRONIZACION
+            SET 
+                COCA_DEALERSTOTALES = (
+                    SELECT COUNT(DISTINCT COSA_DEALERBAC)
+                    FROM CO_FOTODEALERPRODUCTOS
+                    WHERE COFD_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
+                ),
+                FECHAMODIFICACION = SYSDATE,
+                USUARIOMODIFICACION = :UsuarioModificacion
+            WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Actualizando DealersTotales. ID: {Id}, Usuario: {Usuario}",
+                cargaArchivoSincronizacionId, usuarioModificacion);
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var parametros = new DynamicParameters();
+            parametros.Add("CargaArchivoSincronizacionId", cargaArchivoSincronizacionId);
+            parametros.Add("UsuarioModificacion", usuarioModificacion);
+
+            var filasAfectadas = await connection.ExecuteAsync(sqlUpdate, parametros);
+
+            _logger.LogInformation(
+                "✅ [REPOSITORY] DealersTotales actualizado exitosamente. ID: {Id}, Filas afectadas: {Filas}",
+                cargaArchivoSincronizacionId, filasAfectadas);
+
+            return filasAfectadas;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex,
+                "❌ [REPOSITORY] Error Oracle al actualizar DealersTotales. ID: {Id}, ErrorCode: {ErrorCode}",
+                cargaArchivoSincronizacionId, ex.Number);
+            throw new DataAccessException("Error al actualizar DealersTotales en la base de datos", ex);
         }
     }
 

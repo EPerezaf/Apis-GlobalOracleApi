@@ -19,6 +19,32 @@ public class FotoDealerProductosDto
     public int CargaArchivoSincronizacionId { get; set; }
 
     /// <summary>
+    /// ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION).
+    /// </summary>
+    public string IdCarga { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION).
+    /// </summary>
+    public string ProcesoCarga { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Fecha de carga (desde CO_CARGAARCHIVOSINCRONIZACION).
+    /// </summary>
+    public DateTime FechaCarga { get; set; }
+
+    /// <summary>
+    /// Fecha de sincronización (desde CO_SINCRONIZACIONARCHIVOSDEALERS, puede ser null si no existe registro).
+    /// </summary>
+    public DateTime? FechaSincronizacion { get; set; }
+
+    /// <summary>
+    /// Tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga).
+    /// Si FechaSincronizacion es null, este valor será null.
+    /// </summary>
+    public decimal? TiempoSincronizacionHoras { get; set; }
+
+    /// <summary>
     /// Código BAC del dealer (FK).
     /// </summary>
     public string DealerBac { get; set; } = string.Empty;
@@ -104,11 +130,7 @@ public class CrearFotoDealerProductosDto
     [StringLength(400, ErrorMessage = "El sistema DMS no puede exceder 400 caracteres")]
     public string Dms { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Fecha de registro de la fotografía.
-    /// </summary>
-    [Required(ErrorMessage = "La fecha de registro es requerida")]
-    public DateTime FechaRegistro { get; set; }
+    // NOTA: FechaRegistro se calcula automáticamente en el servicio (no se envía en el request)
 }
 
 /// <summary>

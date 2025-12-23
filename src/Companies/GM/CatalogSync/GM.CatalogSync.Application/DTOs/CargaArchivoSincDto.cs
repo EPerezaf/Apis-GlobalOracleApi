@@ -97,11 +97,7 @@ public class CrearCargaArchivoSincDto
     [StringLength(400, ErrorMessage = "El nombre del archivo no puede exceder 400 caracteres")]
     public string NombreArchivo { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Fecha y hora de la carga.
-    /// </summary>
-    [Required(ErrorMessage = "La fecha de carga es requerida")]
-    public DateTime FechaCarga { get; set; }
+    // NOTA: FechaCarga se calcula automáticamente en el servicio (no se envía en el request)
 
     /// <summary>
     /// Identificador único de la carga (debe ser único en la tabla).

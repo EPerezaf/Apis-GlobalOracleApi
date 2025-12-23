@@ -15,16 +15,13 @@ namespace GM.CatalogSync.Application.Services;
 public class FotoDealerProductosService : IFotoDealerProductosService
 {
     private readonly IFotoDealerProductosRepository _repository;
-    private readonly ICargaArchivoSincRepository _cargaArchivoSincRepository;
     private readonly ILogger<FotoDealerProductosService> _logger;
 
     public FotoDealerProductosService(
         IFotoDealerProductosRepository repository,
-        ICargaArchivoSincRepository cargaArchivoSincRepository,
         ILogger<FotoDealerProductosService> logger)
     {
         _repository = repository;
-        _cargaArchivoSincRepository = cargaArchivoSincRepository;
         _logger = logger;
     }
 
@@ -33,16 +30,16 @@ public class FotoDealerProductosService : IFotoDealerProductosService
     {
         _logger.LogInformation("🔷 [SERVICE] Obteniendo foto dealer productos con ID {Id}", id);
 
-        var entidad = await _repository.ObtenerPorIdAsync(id);
+        var resultado = await _repository.ObtenerPorIdCompletoAsync(id);
 
-        if (entidad == null)
+        if (resultado == null)
         {
             _logger.LogWarning("⚠️ [SERVICE] Foto dealer productos con ID {Id} no encontrado", id);
             return null;
         }
 
         _logger.LogInformation("✅ [SERVICE] Foto dealer productos con ID {Id} obtenido exitosamente", id);
-        return MapearADto(entidad);
+        return MapearADto(resultado);
     }
 
     /// <inheritdoc />
@@ -61,7 +58,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
             page,
             pageSize);
 
-        var (entidades, totalRecords) = await _repository.ObtenerTodosConFiltrosAsync(
+        var (resultados, totalRecords) = await _repository.ObtenerTodosConFiltrosCompletoAsync(
             cargaArchivoSincronizacionId,
             dealerBac,
             dms,
@@ -70,9 +67,9 @@ public class FotoDealerProductosService : IFotoDealerProductosService
 
         _logger.LogInformation(
             "✅ [SERVICE] Se obtuvieron {Cantidad} registros de {Total} totales (Página {Page})",
-            entidades.Count, totalRecords, page);
+            resultados.Count, totalRecords, page);
 
-        var dtos = entidades.Select(MapearADto).ToList();
+        var dtos = resultados.Select(MapearADto).ToList();
         return (dtos, totalRecords);
     }
 
@@ -92,6 +89,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
         }
 
         // Mapear DTOs a entidades
+        var fechaRegistro = DateTimeHelper.GetMexicoDateTime(); // FechaRegistro se calcula automáticamente
         var entidades = dto.Json.Select(dtoItem => new FotoDealerProductos
         {
             CargaArchivoSincronizacionId = dtoItem.CargaArchivoSincronizacionId,
@@ -99,7 +97,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
             NombreDealer = dtoItem.NombreDealer,
             RazonSocialDealer = dtoItem.RazonSocialDealer,
             Dms = dtoItem.Dms,
-            FechaRegistro = dtoItem.FechaRegistro,
+            FechaRegistro = fechaRegistro, // Calculado automáticamente (hora de México)
             FechaAlta = DateTimeHelper.GetMexicoDateTime(),
             UsuarioAlta = usuarioAlta
         }).ToList();
@@ -124,8 +122,8 @@ public class FotoDealerProductosService : IFotoDealerProductosService
         
         foreach (var cargaArchivoSincId in cargaArchivoSincIdsUnicos)
         {
-            var existeCarga = await _cargaArchivoSincRepository.ObtenerPorIdAsync(cargaArchivoSincId);
-            if (existeCarga == null)
+            var existeCarga = await _repository.ExisteCargaArchivoSincronizacionIdAsync(cargaArchivoSincId);
+            if (!existeCarga)
             {
                 var indices = entidades
                     .Select((e, idx) => new { e, idx })
@@ -182,27 +180,43 @@ public class FotoDealerProductosService : IFotoDealerProductosService
             "✅ [SERVICE] Batch insert completado exitosamente. {Cantidad} registros creados. Usuario: {Usuario}",
             entidadesCreadas.Count, usuarioAlta);
 
-        return entidadesCreadas.Select(MapearADto).ToList();
+        // Para los registros creados, obtener datos completos con JOIN
+        var dtos = new List<FotoDealerProductosDto>();
+        foreach (var entidad in entidadesCreadas)
+        {
+            var resultado = await _repository.ObtenerPorIdCompletoAsync(entidad.FotoDealerProductosId);
+            if (resultado != null)
+            {
+                dtos.Add(MapearADto(resultado));
+            }
+        }
+
+        return dtos;
     }
 
     /// <summary>
-    /// Mapea una entidad a su DTO correspondiente.
+    /// Mapea un resultado completo del JOIN a su DTO correspondiente.
     /// </summary>
-    private static FotoDealerProductosDto MapearADto(FotoDealerProductos entidad)
+    private static FotoDealerProductosDto MapearADto(FotoDealerProductosMap map)
     {
         return new FotoDealerProductosDto
         {
-            FotoDealerProductosId = entidad.FotoDealerProductosId,
-            CargaArchivoSincronizacionId = entidad.CargaArchivoSincronizacionId,
-            DealerBac = entidad.DealerBac,
-            NombreDealer = entidad.NombreDealer,
-            RazonSocialDealer = entidad.RazonSocialDealer,
-            Dms = entidad.Dms,
-            FechaRegistro = entidad.FechaRegistro,
-            FechaAlta = entidad.FechaAlta,
-            UsuarioAlta = entidad.UsuarioAlta,
-            FechaModificacion = entidad.FechaModificacion,
-            UsuarioModificacion = entidad.UsuarioModificacion
+            FotoDealerProductosId = map.FotoDealerProductosId,
+            CargaArchivoSincronizacionId = map.CargaArchivoSincronizacionId,
+            IdCarga = map.IdCarga ?? string.Empty,
+            ProcesoCarga = map.ProcesoCarga ?? string.Empty,
+            FechaCarga = map.FechaCarga ?? DateTime.MinValue,
+            FechaSincronizacion = map.FechaSincronizacion,
+            TiempoSincronizacionHoras = map.TiempoSincronizacionHoras,
+            DealerBac = map.DealerBac,
+            NombreDealer = map.NombreDealer,
+            RazonSocialDealer = map.RazonSocialDealer,
+            Dms = map.Dms,
+            FechaRegistro = map.FechaRegistro,
+            FechaAlta = map.FechaAlta,
+            UsuarioAlta = map.UsuarioAlta,
+            FechaModificacion = map.FechaModificacion,
+            UsuarioModificacion = map.UsuarioModificacion
         };
     }
 }

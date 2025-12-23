@@ -18,9 +18,29 @@ public class SincArchivoDealerDto
     public string Proceso { get; set; } = string.Empty;
 
     /// <summary>
-    /// ID de la carga relacionada.
+    /// ID de la carga de archivo de sincronización relacionada (FK).
+    /// </summary>
+    public int CargaArchivoSincronizacionId { get; set; }
+
+    /// <summary>
+    /// ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION).
     /// </summary>
     public string IdCarga { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION).
+    /// </summary>
+    public string ProcesoCarga { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Fecha de carga (desde CO_CARGAARCHIVOSINCRONIZACION).
+    /// </summary>
+    public DateTime FechaCarga { get; set; }
+
+    /// <summary>
+    /// Tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga).
+    /// </summary>
+    public decimal TiempoSincronizacionHoras { get; set; }
 
     /// <summary>
     /// Sistema DMS origen.
@@ -81,11 +101,11 @@ public class CrearSincArchivoDealerDto
     public string Proceso { get; set; } = string.Empty;
 
     /// <summary>
-    /// ID de la carga relacionada.
+    /// ID de la carga de archivo de sincronización relacionada (FK).
     /// </summary>
-    [Required(ErrorMessage = "El ID de carga es requerido")]
-    [StringLength(400, ErrorMessage = "El ID de carga no puede exceder 400 caracteres")]
-    public string IdCarga { get; set; } = string.Empty;
+    [Required(ErrorMessage = "El ID de carga de archivo de sincronización es requerido")]
+    [Range(1, int.MaxValue, ErrorMessage = "El ID de carga debe ser mayor a 0")]
+    public int CargaArchivoSincronizacionId { get; set; }
 
     /// <summary>
     /// Sistema DMS origen.
@@ -108,11 +128,7 @@ public class CrearSincArchivoDealerDto
     [StringLength(400, ErrorMessage = "El nombre del dealer no puede exceder 400 caracteres")]
     public string NombreDealer { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Fecha de sincronización.
-    /// </summary>
-    [Required(ErrorMessage = "La fecha de sincronización es requerida")]
-    public DateTime FechaSincronizacion { get; set; }
+    // NOTA: FechaSincronizacion se calcula automáticamente en el servicio (no se envía en el request)
 
     /// <summary>
     /// Número de registros sincronizados.
@@ -133,9 +149,9 @@ public class FiltrosSincArchivoDealerDto
     public string? Proceso { get; set; }
 
     /// <summary>
-    /// Filtro por ID de carga.
+    /// Filtro por ID de carga de archivo de sincronización.
     /// </summary>
-    public string? IdCarga { get; set; }
+    public int? CargaArchivoSincronizacionId { get; set; }
 
     /// <summary>
     /// Filtro por código BAC del dealer.

@@ -42,6 +42,11 @@ public class GetFotoDealerProductosPorIdController : ControllerBase
     /// **Campos en la respuesta:**
     /// - `fotoDealerProductosId`: ID único del registro
     /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización
+    /// - `idCarga`: ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "products_catalog_16122025_1335")
+    /// - `procesoCarga`: Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "ProductsCatalog")
+    /// - `fechaCarga`: Fecha de carga del archivo (desde CO_CARGAARCHIVOSINCRONIZACION)
+    /// - `fechaSincronizacion`: Fecha de sincronización (desde CO_SINCRONIZACIONARCHIVOSDEALERS, puede ser null si no existe registro)
+    /// - `tiempoSincronizacionHoras`: Tiempo de sincronización en horas (calculado: FechaSincronizacion - FechaCarga, puede ser null si no existe fechaSincronizacion, ej: 0.97)
     /// - `dealerBac`: Código BAC del dealer
     /// - `nombreDealer`: Nombre comercial del dealer
     /// - `razonSocialDealer`: Razón social legal del dealer

@@ -39,30 +39,30 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// 
     /// **Funcionalidad de la transacción:**
     /// - Automáticamente actualiza los contadores en `CO_CARGAARCHIVOSINCRONIZACION`:
-    ///   - `COCA_DEALERSSONCRONIZADOS`: Cuenta total de dealers sincronizados para el `idCarga`
+    ///   - `COCA_DEALERSSONCRONIZADOS`: Cuenta total de dealers sincronizados para el `cargaArchivoSincronizacionId`
     ///   - `COCA_PORCDEALERSSINC`: Porcentaje calculado (DealersSincronizados / DealersTotales * 100)
     /// - Si falla cualquier operación, se hace ROLLBACK completo (no se crea el registro ni se actualizan contadores)
     /// - Garantiza consistencia de datos (todo o nada)
     /// 
     /// **Validaciones:**
-    /// - La combinación de `proceso`, `idCarga` y `dealerBac` debe ser única (constraint UQ_COSA_PROCESO_CARGA_DEALER)
+    /// - La combinación de `proceso`, `cargaArchivoSincronizacionId` y `dealerBac` debe ser única (constraint UQ_COSA_PROCESO_CARGA_DEALER)
     /// - Si ya existe un registro con la misma combinación, retorna error 409 Conflict
-    /// - Debe existir un registro de carga activo (`COCA_ACTUAL=1`) con el `idCarga` especificado
+    /// - Debe existir un registro de carga activo (`COCA_ACTUAL=1`) con el `cargaArchivoSincronizacionId` especificado
     /// - Si no existe el registro de carga, retorna error 404 Not Found
     /// 
     /// **Campos obligatorios:**
     /// - `proceso`: Nombre del proceso de sincronización (ej: "ProductsCatalog")
-    /// - `idCarga`: ID de la carga relacionada (ej: "products_catalog_16122025_1335")
+    /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización relacionada (FK, número, ej: 1)
     /// - `dmsOrigen`: Sistema DMS origen (ej: "Reynolds", "CDK")
     /// - `dealerBac`: Código BAC del dealer (ej: "MX001")
     /// - `nombreDealer`: Nombre del dealer (ej: "Chevrolet Polanco")
     /// - `registrosSincronizados`: Cantidad de registros sincronizados (ej: 150)
     /// 
-    /// **Campos calculados automáticamente:**
-    /// - `fechaSincronizacion`: Fecha de sincronización (SYSDATE)
+    /// **Campos calculados automáticamente (NO enviar en el request):**
+    /// - `fechaSincronizacion`: Se calcula automáticamente con hora de México
     /// - `sincArchivoDealerId`: ID único generado por secuencia
     /// - `fechaAlta`: Fecha y hora del servidor (SYSDATE)
-    /// - `usuarioAlta`: Usuario autenticado (JWT)
+    /// - `usuarioAlta`: Se toma del JWT token
     /// - `fechaModificacion`: null (no aplica en creación)
     /// - `usuarioModificacion`: null (no aplica en creación)
     /// 
@@ -70,7 +70,7 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// ```json
     /// {
     ///   "proceso": "ProductsCatalog",
-    ///   "idCarga": "products_catalog_16122025_1335",
+    ///   "cargaArchivoSincronizacionId": 1,
     ///   "dmsOrigen": "Reynolds",
     ///   "dealerBac": "MX001",
     ///   "nombreDealer": "Chevrolet Polanco",
@@ -80,8 +80,11 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// 
     /// ⚠️ **IMPORTANTE:**
     /// - ❌ NO enviar `sincArchivoDealerId` (se genera automáticamente)
-    /// - ❌ NO enviar campos de auditoría (se calculan automáticamente)
-    /// - ✅ La combinación proceso + idCarga + dealerBac debe ser única
+    /// - ❌ NO enviar `fechaSincronizacion` (se calcula automáticamente con hora de México)
+    /// - ❌ NO enviar `fechaAlta`, `usuarioAlta` (se calculan automáticamente)
+    /// - ❌ NO enviar `usuarioAlta` (se toma del JWT token)
+    /// - ✅ La combinación proceso + cargaArchivoSincronizacionId + dealerBac debe ser única
+    /// - ✅ El `cargaArchivoSincronizacionId` debe existir en `CO_CARGAARCHIVOSINCRONIZACION` y estar activo (`COCA_ACTUAL=1`)
     /// 
     /// **Respuesta exitosa incluye:**
     /// - Registro de sincronización creado con todos sus campos
@@ -92,7 +95,8 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// <returns>Registro de sincronización creado</returns>
     /// <response code="201">Registro creado exitosamente.</response>
     /// <response code="400">Error de validación en los datos enviados.</response>
-    /// <response code="409">Ya existe un registro con la misma combinación proceso/idCarga/dealerBac (duplicado).</response>
+    /// <response code="404">No se encontró un registro de carga activo con el cargaArchivoSincronizacionId especificado.</response>
+    /// <response code="409">Ya existe un registro con la misma combinación proceso/cargaArchivoSincronizacionId/dealerBac (duplicado).</response>
     /// <response code="500">Error interno del servidor.</response>
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<SincArchivoDealerDto>), StatusCodes.Status201Created)]
@@ -176,13 +180,13 @@ public class CreateSincArchivosDealersController : ControllerBase
                     new ErrorDetail
                     {
                         Code = "CARGA_NOT_FOUND",
-                        Field = "idCarga",
+                        Field = "cargaArchivoSincronizacionId",
                         Message = ex.Message,
                         Details = new Dictionary<string, object>
                         {
                             { "resourceName", ex.ResourceName },
                             { "resourceId", ex.ResourceId ?? "N/A" },
-                            { "suggestion", "Verifique que el idCarga existe y que el registro de carga esté activo (COCA_ACTUAL=1)" }
+                            { "suggestion", "Verifique que el cargaArchivoSincronizacionId existe en CO_CARGAARCHIVOSINCRONIZACION y que el registro de carga esté activo (COCA_ACTUAL=1)" }
                         }
                     }
                 },
@@ -193,8 +197,8 @@ public class CreateSincArchivosDealersController : ControllerBase
         {
             stopwatch.Stop();
             _logger.LogWarning(
-                "[{CorrelationId}] ⚠️ Registro duplicado - Proceso: {Proceso}, IdCarga: {IdCarga}, DealerBac: {DealerBac}. Tiempo: {ElapsedMs}ms",
-                correlationId, ex.Proceso, ex.IdCarga, ex.DealerBac, stopwatch.ElapsedMilliseconds);
+                "[{CorrelationId}] ⚠️ Registro duplicado - Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}. Tiempo: {ElapsedMs}ms",
+                correlationId, ex.Proceso, ex.CargaArchivoSincronizacionId, ex.DealerBac, stopwatch.ElapsedMilliseconds);
 
             return Conflict(new ApiResponse
             {
@@ -205,15 +209,15 @@ public class CreateSincArchivosDealersController : ControllerBase
                     new ErrorDetail
                     {
                         Code = "DUPLICATE_RECORD",
-                        Field = "(proceso, idCarga, dealerBac)",
+                        Field = "(proceso, cargaArchivoSincronizacionId, dealerBac)",
                         Message = ex.Message,
                         Details = new Dictionary<string, object>
                         {
                             { "proceso", ex.Proceso },
-                            { "idCarga", ex.IdCarga },
+                            { "cargaArchivoSincronizacionId", ex.CargaArchivoSincronizacionId },
                             { "dealerBac", ex.DealerBac },
                             { "constraint", "UQ_COSA_PROCESO_CARGA_DEALER" },
-                            { "suggestion", "La combinación de proceso, idCarga y dealerBac debe ser única. Verifique si ya existe un registro con estos valores." }
+                            { "suggestion", "La combinación de proceso, cargaArchivoSincronizacionId y dealerBac debe ser única. Verifique si ya existe un registro con estos valores." }
                         }
                     }
                 },

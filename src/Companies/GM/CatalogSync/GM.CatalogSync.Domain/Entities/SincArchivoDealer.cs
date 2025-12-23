@@ -17,9 +17,9 @@ public class SincArchivoDealer
     public string Proceso { get; set; } = string.Empty;
 
     /// <summary>
-    /// ID de la carga relacionada (COSA_IDCARGA).
+    /// ID de la carga de archivo de sincronización relacionada (COSA_COCA_CARGAARCHIVOSINID) - FK a CO_CARGAARCHIVOSINCRONIZACION.
     /// </summary>
-    public string IdCarga { get; set; } = string.Empty;
+    public int CargaArchivoSincronizacionId { get; set; }
 
     /// <summary>
     /// Sistema DMS origen (COSA_DMSORIGEN).

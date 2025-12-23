@@ -37,6 +37,13 @@ public interface IFotoDealerProductosRepository
     Task<bool> ExisteCombinacionAsync(int cargaArchivoSincronizacionId, string dealerBac);
 
     /// <summary>
+    /// Verifica si existe un registro de carga de archivo de sincronización con el ID especificado.
+    /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">ID de carga de archivo de sincronización</param>
+    /// <returns>True si existe, False si no existe</returns>
+    Task<bool> ExisteCargaArchivoSincronizacionIdAsync(int cargaArchivoSincronizacionId);
+
+    /// <summary>
     /// Crea múltiples registros en batch usando transacción.
     /// </summary>
     /// <param name="entidades">Lista de entidades a crear</param>
@@ -45,5 +52,43 @@ public interface IFotoDealerProductosRepository
     Task<List<FotoDealerProductos>> CrearBatchAsync(
         List<FotoDealerProductos> entidades,
         string usuarioAlta);
+
+    /// <summary>
+    /// Obtiene un registro por ID con datos completos del JOIN (incluye FechaSincronizacion y TiempoSincronizacionHoras).
+    /// </summary>
+    Task<FotoDealerProductosMap?> ObtenerPorIdCompletoAsync(int id);
+
+    /// <summary>
+    /// Obtiene todos los registros con filtros y datos completos del JOIN (incluye FechaSincronizacion y TiempoSincronizacionHoras).
+    /// </summary>
+    Task<(List<FotoDealerProductosMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
+        int? cargaArchivoSincronizacionId = null,
+        string? dealerBac = null,
+        string? dms = null,
+        int page = 1,
+        int pageSize = 200);
+}
+
+/// <summary>
+/// Clase auxiliar para mapear resultados de JOIN con CO_CARGAARCHIVOSINCRONIZACION y CO_SINCRONIZACIONARCHIVOSDEALERS.
+/// </summary>
+public class FotoDealerProductosMap
+{
+    public int FotoDealerProductosId { get; set; }
+    public int CargaArchivoSincronizacionId { get; set; }
+    public string DealerBac { get; set; } = string.Empty;
+    public string NombreDealer { get; set; } = string.Empty;
+    public string RazonSocialDealer { get; set; } = string.Empty;
+    public string Dms { get; set; } = string.Empty;
+    public DateTime FechaRegistro { get; set; }
+    public DateTime FechaAlta { get; set; }
+    public string UsuarioAlta { get; set; } = string.Empty;
+    public DateTime? FechaModificacion { get; set; }
+    public string? UsuarioModificacion { get; set; }
+    public string? IdCarga { get; set; }
+    public string? ProcesoCarga { get; set; }
+    public DateTime? FechaCarga { get; set; }
+    public DateTime? FechaSincronizacion { get; set; }
+    public decimal? TiempoSincronizacionHoras { get; set; }
 }
 

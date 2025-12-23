@@ -3,6 +3,8 @@ using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Domain.Entities;
 using GM.CatalogSync.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Shared.Exceptions;
+using Shared.Security;
 
 namespace GM.CatalogSync.Application.Services;
 
@@ -101,7 +103,7 @@ public class CargaArchivoSincService : ICargaArchivoSincService
         {
             Proceso = dto.Proceso.Trim(),
             NombreArchivo = dto.NombreArchivo.Trim(),
-            FechaCarga = dto.FechaCarga,
+            FechaCarga = DateTimeHelper.GetMexicoDateTime(), // Calculado automáticamente (hora de México)
             IdCarga = dto.IdCarga.Trim(),
             Registros = dto.Registros,
             DealersTotales = dto.DealersTotales,
@@ -118,6 +120,61 @@ public class CargaArchivoSincService : ICargaArchivoSincService
             entidadCreada.CargaArchivoSincronizacionId, entidadCreada.Proceso, entidadCreada.IdCarga);
 
         return MapearADto(entidadCreada);
+    }
+
+    /// <inheritdoc />
+    public async Task<CargaArchivoSincDto> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] Actualizando DealersTotales. CargaArchivoSincronizacionId: {Id}, Usuario: {Usuario}",
+            cargaArchivoSincronizacionId, usuarioModificacion);
+
+        // Verificar que existe el registro
+        var entidad = await _repository.ObtenerPorIdAsync(cargaArchivoSincronizacionId);
+        if (entidad == null)
+        {
+            _logger.LogWarning(
+                "⚠️ [SERVICE] No se encontró registro de carga con ID {Id}",
+                cargaArchivoSincronizacionId);
+            throw new NotFoundException(
+                $"No se encontró un registro de carga con ID {cargaArchivoSincronizacionId}",
+                "CargaArchivoSincronizacion",
+                cargaArchivoSincronizacionId.ToString());
+        }
+
+        // Actualizar DealersTotales (cuenta dealers únicos en FotoDealerProductos)
+        var filasAfectadas = await _repository.ActualizarDealersTotalesAsync(
+            cargaArchivoSincronizacionId,
+            usuarioModificacion);
+
+        if (filasAfectadas == 0)
+        {
+            _logger.LogWarning(
+                "⚠️ [SERVICE] No se actualizó ningún registro. ID: {Id}",
+                cargaArchivoSincronizacionId);
+            throw new NotFoundException(
+                $"No se encontró un registro de carga con ID {cargaArchivoSincronizacionId}",
+                "CargaArchivoSincronizacion",
+                cargaArchivoSincronizacionId.ToString());
+        }
+
+        // Obtener el registro actualizado
+        var entidadActualizada = await _repository.ObtenerPorIdAsync(cargaArchivoSincronizacionId);
+        if (entidadActualizada == null)
+        {
+            _logger.LogError(
+                "❌ [SERVICE] Error al obtener registro actualizado. ID: {Id}",
+                cargaArchivoSincronizacionId);
+            throw new BusinessException("Error al obtener el registro actualizado");
+        }
+
+        _logger.LogInformation(
+            "✅ [SERVICE] DealersTotales actualizado exitosamente. ID: {Id}, DealersTotales: {DealersTotales}",
+            cargaArchivoSincronizacionId, entidadActualizada.DealersTotales);
+
+        return MapearADto(entidadActualizada);
     }
 
     /// <summary>

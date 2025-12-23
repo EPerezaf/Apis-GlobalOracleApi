@@ -54,12 +54,12 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// - `nombreDealer`: Nombre comercial del dealer
     /// - `razonSocialDealer`: Razón social legal del dealer
     /// - `dms`: Sistema DMS utilizado
-    /// - `fechaRegistro`: Fecha de registro de la fotografía
     /// 
-    /// **Campos calculados automáticamente:**
+    /// **Campos calculados automáticamente (NO enviar en el request):**
+    /// - `fechaRegistro`: Se calcula automáticamente con hora de México
     /// - `fotoDealerProductosId`: ID único generado por secuencia de Oracle
     /// - `fechaAlta`: Fecha y hora del servidor Oracle (SYSDATE)
-    /// - `usuarioAlta`: Usuario autenticado (JWT)
+    /// - `usuarioAlta`: Se toma del JWT token
     /// 
     /// **Formato del Request:**
     /// ```json
@@ -70,16 +70,14 @@ public class CreateFotoDealerProductosController : ControllerBase
     ///       "dealerBac": "DEALER001",
     ///       "nombreDealer": "Dealer ABC",
     ///       "razonSocialDealer": "ABC Automotriz S.A. de C.V.",
-    ///       "dms": "CDK",
-    ///       "fechaRegistro": "2025-12-18T10:30:00"
+    ///       "dms": "CDK"
     ///     },
     ///     {
     ///       "cargaArchivoSincronizacionId": 1,
     ///       "dealerBac": "DEALER002",
     ///       "nombreDealer": "Dealer XYZ",
     ///       "razonSocialDealer": "XYZ Automotriz S.A. de C.V.",
-    ///       "dms": "Reynolds",
-    ///       "fechaRegistro": "2025-12-18T10:30:00"
+    ///       "dms": "Reynolds"
     ///     }
     ///   ]
     /// }
@@ -87,7 +85,9 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// 
     /// ⚠️ **IMPORTANTE:**
     /// - ❌ NO enviar `fotoDealerProductosId` (se genera automáticamente)
+    /// - ❌ NO enviar `fechaRegistro` (se calcula automáticamente con hora de México)
     /// - ❌ NO enviar campos de auditoría (se calculan automáticamente)
+    /// - ❌ NO enviar `usuarioAlta` (se toma del JWT token)
     /// - ✅ La combinación (cargaArchivoSincronizacionId, dealerBac) debe ser única
     /// - ✅ Todos los registros se procesan en una sola transacción
     /// - ✅ Validación previa: verifica duplicados ANTES de insertar

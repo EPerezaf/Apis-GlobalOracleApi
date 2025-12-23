@@ -50,13 +50,14 @@ public class CreateCargaArchivosSincController : ControllerBase
     /// - `nombreArchivo`: Nombre del archivo cargado (ej: "products_gm_list.xlsx")
     /// - `idCarga`: Identificador único de la carga (ej: "products_catalog_16122025_1335")
     /// - `registros`: Cantidad de registros procesados (ej: 520)
+    /// - `dealersTotales`: Número total de dealers a sincronizar (ej: 150)
     /// 
-    /// **Campos calculados automáticamente:**
+    /// **Campos calculados automáticamente (NO enviar en el request):**
     /// - `cargaArchivoSincId`: ID único generado por secuencia de Oracle
-    /// - `fechaCarga`: Fecha y hora actual del servidor (zona horaria México)
+    /// - `fechaCarga`: Se calcula automáticamente con hora de México
     /// - `actual`: Siempre se establece en true (1) para el nuevo registro
     /// - `fechaAlta`: Fecha y hora del servidor Oracle (SYSDATE)
-    /// - `usuarioAlta`: Usuario autenticado (JWT)
+    /// - `usuarioAlta`: Se toma del JWT token
     /// 
     /// **Formato del Request:**
     /// ```json
@@ -64,20 +65,22 @@ public class CreateCargaArchivosSincController : ControllerBase
     ///   "proceso": "ProductsCatalog",
     ///   "nombreArchivo": "products_gm_list.xlsx",
     ///   "idCarga": "products_catalog_16122025_1335",
-    ///   "registros": 520
+    ///   "registros": 520,
+    ///   "dealersTotales": 150
     /// }
     /// ```
     /// 
     /// ⚠️ **IMPORTANTE:**
     /// - ❌ NO enviar `cargaArchivoSincId` (se genera automáticamente)
-    /// - ❌ NO enviar `fechaCarga` (se calcula con hora de México)
+    /// - ❌ NO enviar `fechaCarga` (se calcula automáticamente con hora de México)
     /// - ❌ NO enviar `actual` (siempre es true para nuevos registros)
-    /// - ❌ NO enviar campos de auditoría (se calculan automáticamente)
+    /// - ❌ NO enviar `fechaAlta`, `usuarioAlta` (se calculan automáticamente)
+    /// - ❌ NO enviar `usuarioAlta` (se toma del JWT token)
     /// - ✅ El `idCarga` debe ser único y descriptivo
     /// 
     /// **Proceso interno:**
     /// 1. Validar que `idCarga` no exista en la base de datos
-    /// 2. Calcular `fechaCarga` con hora de México (America/Mexico_City)
+    /// 2. Calcular automáticamente `fechaCarga` con hora de México
     /// 3. Iniciar transacción
     /// 4. UPDATE: Marcar registros anteriores del mismo proceso como COCA_ACTUAL = 0
     /// 5. INSERT: Crear nuevo registro con COCA_ACTUAL = 1
@@ -86,7 +89,6 @@ public class CreateCargaArchivosSincController : ControllerBase
     /// **Respuesta exitosa incluye:**
     /// - Registro de carga creado con todos sus campos
     /// - ID generado automáticamente
-    /// - FechaCarga calculada automáticamente
     /// - Timestamp de la operación
     /// </remarks>
     /// <param name="dto">Datos del nuevo registro de carga de sincronización</param>

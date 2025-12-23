@@ -37,19 +37,23 @@ public class GetSincArchivosDealersController : ControllerBase
     /// 
     /// **Parámetros opcionales:**
     /// - `proceso`: Filtrar por nombre del proceso (búsqueda parcial, ej: "ProductsCatalog")
-    /// - `idCarga`: Filtrar por ID de carga (búsqueda parcial, ej: "products_catalog_16122025")
+    /// - `cargaArchivoSincronizacionId`: Filtrar por ID de carga de archivo de sincronización (número, ej: 1)
     /// - `dealerBac`: Filtrar por código BAC del dealer (búsqueda parcial, ej: "MX001")
     /// 
     /// **Ejemplos de uso:**
     /// - GET /api/v1/gm/catalog-sync/sinc-archivos-dealers
     /// - GET /api/v1/gm/catalog-sync/sinc-archivos-dealers?proceso=ProductsCatalog
     /// - GET /api/v1/gm/catalog-sync/sinc-archivos-dealers?dealerBac=MX001
-    /// - GET /api/v1/gm/catalog-sync/sinc-archivos-dealers?proceso=ProductsCatalog&amp;idCarga=products_catalog_16122025
+    /// - GET /api/v1/gm/catalog-sync/sinc-archivos-dealers?proceso=ProductsCatalog&amp;cargaArchivoSincronizacionId=1
     /// 
     /// **Campos en la respuesta:**
     /// - `sincArchivoDealerId`: ID único del registro
     /// - `proceso`: Nombre del proceso de sincronización
-    /// - `idCarga`: ID de la carga relacionada
+    /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización relacionada (FK)
+    /// - `idCarga`: ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "products_catalog_16122025_1335")
+    /// - `procesoCarga`: Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "ProductsCatalog")
+    /// - `fechaCarga`: Fecha de carga del archivo (desde CO_CARGAARCHIVOSINCRONIZACION)
+    /// - `tiempoSincronizacionHoras`: Tiempo de sincronización en horas (calculado: FechaSincronizacion - FechaCarga, ej: 0.97)
     /// - `dmsOrigen`: Sistema DMS origen
     /// - `dealerBac`: Código BAC del dealer
     /// - `nombreDealer`: Nombre del dealer
@@ -62,7 +66,7 @@ public class GetSincArchivosDealersController : ControllerBase
     /// - Timestamp de la operación
     /// </remarks>
     /// <param name="proceso">Filtrar por nombre del proceso (búsqueda parcial)</param>
-    /// <param name="idCarga">Filtrar por ID de carga (búsqueda parcial)</param>
+    /// <param name="cargaArchivoSincronizacionId">Filtrar por ID de carga de archivo de sincronización (número)</param>
     /// <param name="dealerBac">Filtrar por código BAC del dealer (búsqueda parcial)</param>
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
@@ -74,7 +78,7 @@ public class GetSincArchivosDealersController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ObtenerTodos(
         [FromQuery] string? proceso = null,
-        [FromQuery] string? idCarga = null,
+        [FromQuery] int? cargaArchivoSincronizacionId = null,
         [FromQuery] string? dealerBac = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
@@ -84,12 +88,12 @@ public class GetSincArchivosDealersController : ControllerBase
         var userId = JwtUserHelper.GetCurrentUser(User, _logger);
 
         _logger.LogInformation(
-            "[{CorrelationId}] 📋 Inicio GET /sinc-archivos-dealers. Usuario: {UserId}, Filtros: Proceso={Proceso}, IdCarga={IdCarga}, DealerBac={DealerBac}, Página={Page}, PageSize={PageSize}",
-            correlationId, userId, proceso ?? "null", idCarga ?? "null", dealerBac ?? "null", page, pageSize);
+            "[{CorrelationId}] 📋 Inicio GET /sinc-archivos-dealers. Usuario: {UserId}, Filtros: Proceso={Proceso}, CargaArchivoSincronizacionId={CargaArchivoSincronizacionId}, DealerBac={DealerBac}, Página={Page}, PageSize={PageSize}",
+            correlationId, userId, proceso ?? "null", cargaArchivoSincronizacionId?.ToString() ?? "null", dealerBac ?? "null", page, pageSize);
 
         try
         {
-            var (resultados, totalRecords) = await _service.ObtenerTodosConFiltrosAsync(proceso, idCarga, dealerBac, page, pageSize);
+            var (resultados, totalRecords) = await _service.ObtenerTodosConFiltrosAsync(proceso, cargaArchivoSincronizacionId, dealerBac, page, pageSize);
 
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
@@ -144,7 +148,11 @@ public class GetSincArchivosDealersController : ControllerBase
     /// **Campos en la respuesta:**
     /// - `sincArchivoDealerId`: ID único del registro
     /// - `proceso`: Nombre del proceso de sincronización
-    /// - `idCarga`: ID de la carga relacionada
+    /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización relacionada (FK)
+    /// - `idCarga`: ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "products_catalog_16122025_1335")
+    /// - `procesoCarga`: Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "ProductsCatalog")
+    /// - `fechaCarga`: Fecha de carga del archivo (desde CO_CARGAARCHIVOSINCRONIZACION)
+    /// - `tiempoSincronizacionHoras`: Tiempo de sincronización en horas (calculado: FechaSincronizacion - FechaCarga, ej: 0.97)
     /// - `dmsOrigen`: Sistema DMS origen
     /// - `dealerBac`: Código BAC del dealer
     /// - `nombreDealer`: Nombre del dealer

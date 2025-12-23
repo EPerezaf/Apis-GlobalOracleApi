@@ -38,5 +38,15 @@ public interface ICargaArchivoSincService
     Task<CargaArchivoSincDto> CrearAsync(
         CrearCargaArchivoSincDto dto,
         string usuarioAlta);
+
+    /// <summary>
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos.
+    /// </summary>
+    /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
+    /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>
+    /// <returns>Registro actualizado</returns>
+    Task<CargaArchivoSincDto> ActualizarDealersTotalesAsync(
+        int cargaArchivoSincronizacionId,
+        string usuarioModificacion);
 }
 

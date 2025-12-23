@@ -658,6 +658,68 @@ public class Create{Entity}Dto
 }
 ```
 
+### ⚠️ Reglas Críticas para DTOs de Creación
+
+**❌ NUNCA incluir en DTOs de creación (`Create{Entity}Dto`):**
+- ❌ **Fechas** (FechaCarga, FechaRegistro, FechaSincronizacion, FechaAlta, FechaModificacion, etc.)
+  - Todas las fechas se calculan automáticamente en el servicio usando `DateTimeHelper.GetMexicoDateTime()`
+- ❌ **Usuarios** (UsuarioAlta, UsuarioModificacion, UsuarioRegistro, etc.)
+  - Todos los usuarios se toman del JWT token en el controller usando `JwtUserHelper.GetCurrentUser()`
+- ❌ **IDs generados automáticamente** (Id, {Entity}Id, etc.)
+  - Se generan por secuencias de Oracle o auto-increment
+
+**✅ SIEMPRE hacer:**
+- ✅ Calcular fechas automáticamente en el servicio usando `DateTimeHelper.GetMexicoDateTime()`
+- ✅ Tomar usuarios del JWT en el controller y pasarlos al servicio
+- ✅ Documentar en XML que estos campos son calculados automáticamente
+- ✅ Agregar comentarios en el DTO indicando que el campo se calcula automáticamente
+
+**Ejemplo correcto:**
+```csharp
+// ❌ INCORRECTO - DTO con fecha y usuario
+public class CrearCargaArchivoDto
+{
+    [Required]
+    public string Proceso { get; set; } = string.Empty;
+    
+    [Required]
+    public DateTime FechaCarga { get; set; } // ❌ NO debe estar aquí
+    
+    public string UsuarioAlta { get; set; } = string.Empty; // ❌ NO debe estar aquí
+}
+
+// ✅ CORRECTO - DTO sin fecha ni usuario
+public class CrearCargaArchivoDto
+{
+    [Required]
+    public string Proceso { get; set; } = string.Empty;
+    
+    // NOTA: FechaCarga se calcula automáticamente en el servicio (no se envía en el request)
+    // NOTA: UsuarioAlta se toma del JWT token (no se envía en el request)
+}
+
+// ✅ CORRECTO - Service calcula fecha automáticamente
+public async Task<CargaArchivoDto> CrearAsync(CrearCargaArchivoDto dto, string usuarioAlta)
+{
+    var entidad = new CargaArchivo
+    {
+        Proceso = dto.Proceso,
+        FechaCarga = DateTimeHelper.GetMexicoDateTime(), // ✅ Calculado automáticamente
+        UsuarioAlta = usuarioAlta // ✅ Viene del JWT (pasado desde el controller)
+    };
+    // ...
+}
+
+// ✅ CORRECTO - Controller toma usuario del JWT
+[HttpPost]
+public async Task<IActionResult> Crear([FromBody] CrearCargaArchivoDto dto)
+{
+    var userId = JwtUserHelper.GetCurrentUser(User, _logger); // ✅ Usuario del JWT
+    var resultado = await _service.CrearAsync(dto, userId);
+    // ...
+}
+```
+
 ## 🏗️ Convenciones de Entidades
 
 ### Estructura con Auditoría
