@@ -34,6 +34,11 @@ public interface ISincArchivoDealerRepository
     Task<bool> ExisteRegistroAsync(string proceso, int cargaArchivoSincronizacionId, string dealerBac);
 
     /// <summary>
+    /// Obtiene un registro existente por proceso, cargaArchivoSincronizacionId y dealerBac (para validación de duplicados).
+    /// </summary>
+    Task<SincArchivoDealer?> ObtenerPorProcesoCargaYDealerAsync(string proceso, int cargaArchivoSincronizacionId, string dealerBac);
+
+    /// <summary>
     /// Verifica si existe un registro de carga de archivo de sincronización con el ID especificado.
     /// </summary>
     Task<bool> ExisteCargaArchivoSincronizacionIdAsync(int cargaArchivoSincronizacionId);

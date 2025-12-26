@@ -69,7 +69,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
         const string sql = @"
             SELECT 
                 s.COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
-                s.COSA_PROCESO as Proceso,
+                c.COCA_PROCESO as Proceso,
                 s.COSA_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                 s.COSA_DMSORIGEN as DmsOrigen,
                 s.COSA_DEALERBAC as DealerBac,
@@ -153,7 +153,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 
             if (!string.IsNullOrWhiteSpace(proceso))
             {
-                whereClause += " AND UPPER(COSA_PROCESO) LIKE UPPER(:Proceso)";
+                whereClause += " AND UPPER(c.COCA_PROCESO) LIKE UPPER(:Proceso)";
                 parameters.Add("Proceso", $"%{proceso}%");
             }
 
@@ -188,7 +188,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 SELECT * FROM (
                     SELECT 
                         s.COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
-                        s.COSA_PROCESO as Proceso,
+                        c.COCA_PROCESO as Proceso,
                         s.COSA_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                         s.COSA_DMSORIGEN as DmsOrigen,
                         s.COSA_DEALERBAC as DealerBac,
@@ -246,10 +246,11 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
     {
         const string sql = @"
             SELECT COUNT(1) 
-            FROM CO_SINCRONIZACIONARCHIVOSDEALERS 
-            WHERE COSA_PROCESO = :Proceso 
-            AND COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
-            AND COSA_DEALERBAC = :DealerBac";
+            FROM CO_SINCRONIZACIONARCHIVOSDEALERS s
+            INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON s.COSA_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
+            WHERE c.COCA_PROCESO = :Proceso 
+            AND s.COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
+            AND s.COSA_DEALERBAC = :DealerBac";
 
         try
         {
@@ -277,6 +278,65 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
         {
             _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle al verificar existencia. ErrorCode: {ErrorCode}",
                 ex.Number);
+            throw new DataAccessException("Error al acceder a la base de datos", ex);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task<SincArchivoDealer?> ObtenerPorProcesoCargaYDealerAsync(string proceso, int cargaArchivoSincronizacionId, string dealerBac)
+    {
+        const string sql = @"
+            SELECT
+                s.COSA_SINCARCHIVODEALERID as SincArchivoDealerId,
+                c.COCA_PROCESO as Proceso,
+                s.COSA_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
+                s.COSA_DMSORIGEN as DmsOrigen,
+                s.COSA_DEALERBAC as DealerBac,
+                s.COSA_NOMBREDEALER as NombreDealer,
+                s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                s.FECHAALTA as FechaAlta,
+                s.USUARIOALTA as UsuarioAlta,
+                s.FECHAMODIFICACION as FechaModificacion,
+                s.USUARIOMODIFICACION as UsuarioModificacion
+            FROM CO_SINCRONIZACIONARCHIVOSDEALERS s
+            INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON s.COSA_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
+            WHERE c.COCA_PROCESO = :Proceso
+            AND s.COSA_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
+            AND s.COSA_DEALERBAC = :DealerBac
+            AND ROWNUM = 1";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Obteniendo registro por Proceso, CargaArchivoSincronizacionId y DealerBac - Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}",
+                proceso, cargaArchivoSincronizacionId, dealerBac);
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var resultado = await connection.QueryFirstOrDefaultAsync<SincArchivoDealer>(sql, new
+            {
+                Proceso = proceso,
+                CargaArchivoSincronizacionId = cargaArchivoSincronizacionId,
+                DealerBac = dealerBac
+            });
+
+            if (resultado == null)
+            {
+                _logger.LogInformation("ℹ️ [REPOSITORY] No se encontró registro para esta combinación");
+            }
+            else
+            {
+                _logger.LogInformation("✅ [REPOSITORY] Registro encontrado. ID: {Id}, FechaSincronizacion: {Fecha}",
+                    resultado.SincArchivoDealerId, resultado.FechaSincronizacion);
+            }
+
+            return resultado;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle en {Method}. ErrorCode: {ErrorCode}",
+                nameof(ObtenerPorProcesoCargaYDealerAsync), ex.Number);
             throw new DataAccessException("Error al acceder a la base de datos", ex);
         }
     }
@@ -326,7 +386,6 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
         const string sqlInsert = @"
             INSERT INTO CO_SINCRONIZACIONARCHIVOSDEALERS (
                 COSA_SINCARCHIVODEALERID,
-                COSA_PROCESO,
                 COSA_COCA_CARGAARCHIVOSINID,
                 COSA_DMSORIGEN,
                 COSA_DEALERBAC,
@@ -337,7 +396,6 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 USUARIOALTA
             ) VALUES (
                 SEQ_COSA_SINCARCHIVODEALERID.NEXTVAL,
-                :Proceso,
                 :CargaArchivoSincronizacionId,
                 :DmsOrigen,
                 :DealerBac,
@@ -348,11 +406,12 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 :UsuarioAlta
             ) RETURNING COSA_SINCARCHIVODEALERID INTO :Id";
 
-        // SQL para obtener COCA_DEALERSTOTALES a partir de CargaArchivoSincronizacionId
+        // SQL para obtener COCA_DEALERSTOTALES y COCA_REGISTROS a partir de CargaArchivoSincronizacionId
         const string sqlObtenerCarga = @"
             SELECT 
                 COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
-                COCA_DEALERSTOTALES as DealersTotales
+                COCA_DEALERSTOTALES as DealersTotales,
+                COCA_REGISTROS as Registros
             FROM CO_CARGAARCHIVOSINCRONIZACION
             WHERE COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
             AND COCA_ACTUAL = 1";
@@ -365,9 +424,9 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 
         try
         {
-            _logger.LogInformation(
-                "🗄️ [REPOSITORY] Iniciando creación de registro de sincronización con actualización automática de contadores. Proceso: {Proceso}, CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}, Usuario: {Usuario}",
-                entidad.Proceso, entidad.CargaArchivoSincronizacionId, entidad.DealerBac, usuarioAlta);
+                _logger.LogInformation(
+                    "🗄️ [REPOSITORY] Iniciando creación de registro de sincronización con actualización automática de contadores. CargaArchivoSincronizacionId: {CargaArchivoSincronizacionId}, DealerBac: {DealerBac}, Usuario: {Usuario}",
+                    entidad.CargaArchivoSincronizacionId, entidad.DealerBac, usuarioAlta);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
             using var transaction = connection.BeginTransaction();
@@ -398,9 +457,8 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                     "📊 [REPOSITORY] Carga encontrada. COCA_CARGAARCHIVOSINID: {CargaId}, DealersTotales: {DealersTotales}",
                     cargaArchivoSincronizacionId, dealersTotales);
 
-                // 2. Insertar registro de sincronización
+                // 2. Insertar registro de sincronización (sin COSA_PROCESO - se obtiene mediante JOIN)
                 var parametersInsert = new DynamicParameters();
-                parametersInsert.Add("Proceso", entidad.Proceso);
                 parametersInsert.Add("CargaArchivoSincronizacionId", entidad.CargaArchivoSincronizacionId);
                 parametersInsert.Add("DmsOrigen", entidad.DmsOrigen);
                 parametersInsert.Add("DealerBac", entidad.DealerBac);
@@ -484,8 +542,8 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
         catch (OracleException ex)
         {
             _logger.LogError(ex,
-                "❌ [REPOSITORY] Error Oracle al crear registro. Proceso: {Proceso}, DealerBac: {DealerBac}, ErrorCode: {ErrorCode}",
-                entidad.Proceso, entidad.DealerBac, ex.Number);
+                "❌ [REPOSITORY] Error Oracle al crear registro. CargaArchivoSincronizacionId: {CargaId}, DealerBac: {DealerBac}, ErrorCode: {ErrorCode}",
+                entidad.CargaArchivoSincronizacionId, entidad.DealerBac, ex.Number);
             throw new DataAccessException("Error al crear el registro en la base de datos", ex);
         }
     }

@@ -12,7 +12,9 @@ public class SincArchivoDealer
     public int SincArchivoDealerId { get; set; }
 
     /// <summary>
-    /// Nombre del proceso de sincronización (COSA_PROCESO).
+    /// Nombre del proceso de sincronización.
+    /// NOTA: Este campo NO se guarda en la tabla CO_SINCRONIZACIONARCHIVOSDEALERS (no existe COSA_PROCESO).
+    /// Se obtiene mediante JOIN con CO_CARGAARCHIVOSINCRONIZACION.COCA_PROCESO.
     /// </summary>
     public string Proceso { get; set; } = string.Empty;
 

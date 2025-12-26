@@ -32,6 +32,7 @@ src/
 3. **Modular Monolith** - Un solo deploy, módulos aislados
 4. **Estructura:** `Companies → {Company} → {Module} → {Layers}`
 5. **ORM:** Dapper (micro-ORM) - NO Entity Framework ni ADO.NET puro
+6. **⚠️ Documentación XML OBLIGATORIA** - TODOS los endpoints DEBEN tener documentación XML completa (ver sección detallada más abajo)
 
 ## 🏷️ Nomenclatura
 
@@ -149,6 +150,124 @@ public class ProductsController : ControllerBase
 - `[HttpPut("{id}")]` - PUT /api/v1/gm/catalog-sync/products/{id}
 - `[HttpPatch("{id}")]` - PATCH /api/v1/gm/catalog-sync/products/{id}
 - `[HttpDelete("{id}")]` - DELETE /api/v1/gm/catalog-sync/products/{id}
+
+### ⚠️ Documentación XML (OBLIGATORIA - SIN EXCEPCIONES)
+**🚨 REGLA CRÍTICA: TODOS los controllers y TODOS los métodos públicos DEBEN incluir documentación XML completa.**
+
+**Esta regla aplica a:**
+- ✅ Todos los controllers (sin excepciones)
+- ✅ Todos los métodos públicos de controllers (GET, POST, PUT, PATCH, DELETE)
+- ✅ Todos los endpoints, sin importar su complejidad
+- ✅ Endpoints de autenticación, CRUD, monitoreo, diagnóstico, etc.
+
+**NO se aceptan excepciones. Si un endpoint no tiene documentación XML completa, el código está incompleto.**
+
+#### Estructura Requerida (Mínima)
+```csharp
+/// <summary>
+/// Descripción breve del controller o método
+/// </summary>
+/// <remarks>
+/// Descripción detallada del endpoint, incluyendo:
+/// - Funcionalidad específica
+/// - Validaciones realizadas
+/// - Comportamiento especial
+/// - Notas importantes para el consumidor
+/// </remarks>
+/// <param name="paramName">Descripción del parámetro</param>
+/// <returns>Descripción de lo que retorna el método</returns>
+```
+
+#### Ejemplo Completo
+```csharp
+/// <summary>
+/// Controller para obtener productos activos
+/// </summary>
+[ApiController]
+[Route("api/v1/gm/catalog-sync/products")]
+public class ProductsController : ControllerBase
+{
+    /// <summary>
+    /// Obtiene todos los productos activos con paginación
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint retorna una lista paginada de productos activos.
+    /// El dealerBac se obtiene automáticamente del token JWT para futuras validaciones o filtros por dealer.
+    /// </remarks>
+    /// <param name="page">Número de página (por defecto: 1)</param>
+    /// <param name="pageSize">Tamaño de página (por defecto: 200, máximo recomendado: 200)</param>
+    /// <returns>Lista paginada de productos activos</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), 200)]
+    public async Task<IActionResult> GetProducts(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 200)
+    {
+        // Implementación...
+    }
+}
+```
+
+#### Reglas de Documentación XML (OBLIGATORIAS)
+
+**✅ Para TODOS los Controllers:**
+- ✅ **OBLIGATORIO:** `<summary>` con descripción breve del controller
+- ✅ **RECOMENDADO:** `<remarks>` con información adicional si es necesario
+
+**✅ Para TODOS los Métodos Públicos (Endpoints):**
+- ✅ **OBLIGATORIO:** `<summary>` con descripción breve del endpoint
+- ✅ **OBLIGATORIO:** `<remarks>` con descripción detallada que incluya:
+  - Funcionalidad específica del endpoint
+  - Validaciones realizadas
+  - Comportamiento especial o casos de uso
+  - Notas importantes para el consumidor (⚠️ IMPORTANTE)
+  - Ejemplos de uso (si aplica)
+  - Campos en la respuesta (si aplica)
+- ✅ **OBLIGATORIO:** `<param name="paramName">` para TODOS los parámetros (query, route, body)
+- ✅ **OBLIGATORIO:** `<returns>` con descripción de lo que retorna el método
+- ✅ **OBLIGATORIO:** `[ProducesResponseType]` para TODOS los códigos de respuesta posibles (200, 400, 401, 404, 500, etc.)
+
+**✅ Configuración Requerida:**
+- ✅ **OBLIGATORIO:** Generar XML habilitando `<GenerateDocumentationFile>true</GenerateDocumentationFile>` en el .csproj
+- ✅ **OBLIGATORIO:** Incluir XML en Swagger configurando `c.IncludeXmlComments()` en `Program.cs`
+
+**❌ NO se acepta:**
+- ❌ Endpoints sin `<summary>`
+- ❌ Endpoints sin `<remarks>`
+- ❌ Parámetros sin `<param>`
+- ❌ Métodos sin `<returns>`
+- ❌ Falta de `[ProducesResponseType]` para códigos de respuesta
+- ❌ Documentación incompleta o genérica ("Obtiene datos", "Crea registro", etc.)
+
+#### Configuración en .csproj
+```xml
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <NoWarn>$(NoWarn);1591</NoWarn>
+</PropertyGroup>
+```
+
+#### Configuración en Program.cs
+```csharp
+builder.Services.AddSwaggerGen(c =>
+{
+    // Incluir comentarios XML en la documentación (API y Application)
+    var xmlFileApi = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPathApi = Path.Combine(AppContext.BaseDirectory, xmlFileApi);
+    if (File.Exists(xmlPathApi))
+    {
+        c.IncludeXmlComments(xmlPathApi);
+    }
+    
+    // Incluir XML de Application (donde están los DTOs)
+    var xmlFileApp = "{Company}.{Module}.Application.xml";
+    var xmlPathApp = Path.Combine(AppContext.BaseDirectory, xmlFileApp);
+    if (File.Exists(xmlPathApp))
+    {
+        c.IncludeXmlComments(xmlPathApp);
+    }
+});
+```
 
 ### Respuestas
 **SIEMPRE usar `ApiResponse<T>` de Shared.Contracts:**
@@ -1472,6 +1591,11 @@ Antes de hacer commit, verificar:
 - [ ] ¿Uso de `ApiResponse<T>` en controllers?
 - [ ] ¿Route attributes con formato `/api/v1/{company}/{module}/{resource}`?
 - [ ] ¿Validación de DTOs con DataAnnotations?
+- [ ] ¿Documentación XML completa en controllers y métodos públicos?
+- [ ] ¿Todos los parámetros tienen `<param>` en la documentación XML?
+- [ ] ¿Todos los métodos tienen `<summary>`, `<remarks>` y `<returns>`?
+- [ ] ¿El .csproj tiene `<GenerateDocumentationFile>true</GenerateDocumentationFile>`?
+- [ ] ¿Swagger está configurado para incluir comentarios XML?
 
 ### Dapper + Oracle
 - [ ] ¿Usa Dapper (`QueryAsync`, `ExecuteAsync`) en lugar de `OracleCommand`?
@@ -1502,6 +1626,155 @@ Antes de hacer commit, verificar:
 - [ ] ¿La documentación Swagger está actualizada?
 - [ ] ¿Los nombres son descriptivos y consistentes?
 - [ ] ¿Los DTOs están separados de las entidades?
+- [ ] ¿Todos los controllers tienen documentación XML completa?
+- [ ] ¿Todos los métodos públicos tienen `<summary>`, `<remarks>` y `<returns>`?
+- [ ] ¿Todos los parámetros tienen `<param name="paramName">`?
+- [ ] ¿Los comentarios XML están incluidos en Swagger?
+- [ ] ¿Todos los controllers tienen documentación XML completa?
+- [ ] ¿Todos los métodos públicos tienen `<summary>`, `<remarks>` y `<returns>`?
+- [ ] ¿Todos los parámetros tienen `<param name="paramName">`?
+- [ ] ¿Los comentarios XML están incluidos en Swagger?
+
+## 📝 Documentación XML - Regla Obligatoria (SIN EXCEPCIONES)
+
+### 🚨 REGLA CRÍTICA: TODOS los Controllers y TODOS los Métodos Públicos DEBEN tener Documentación XML Completa
+
+**Esta es una regla FUNDAMENTAL del proyecto. NO hay excepciones.**
+
+**Aplica a:**
+- ✅ **TODOS los controllers** sin importar su propósito (CRUD, autenticación, monitoreo, diagnóstico, etc.)
+- ✅ **TODOS los métodos públicos** que sean endpoints HTTP (GET, POST, PUT, PATCH, DELETE)
+- ✅ **TODOS los endpoints**, desde los más simples hasta los más complejos
+- ✅ **TODOS los proyectos** dentro de `src/Companies/`
+
+**Si un endpoint no tiene documentación XML completa, el código está INCOMPLETO y NO debe ser aprobado en code review.**
+
+**Estructura Mínima Requerida:**
+```csharp
+/// <summary>
+/// Descripción breve y clara del controller o método
+/// </summary>
+/// <remarks>
+/// Descripción detallada que incluya:
+/// - Funcionalidad específica del endpoint
+/// - Validaciones realizadas
+/// - Comportamiento especial o casos de uso
+/// - Notas importantes para el consumidor de la API
+/// </remarks>
+/// <param name="paramName">Descripción clara del parámetro, incluyendo valores por defecto si aplica</param>
+/// <returns>Descripción clara de lo que retorna el método</returns>
+```
+
+**Ejemplo Completo:**
+```csharp
+/// <summary>
+/// Controller para gestión de productos
+/// </summary>
+[ApiController]
+[Route("api/v1/gm/catalog-sync/products")]
+public class ProductsController : ControllerBase
+{
+    /// <summary>
+    /// Obtiene todos los productos activos con paginación
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint retorna una lista paginada de productos activos.
+    /// El dealerBac se obtiene automáticamente del token JWT para futuras validaciones o filtros por dealer.
+    /// 
+    /// **Validaciones:**
+    /// - El usuario debe estar autenticado (JWT requerido)
+    /// - La página debe ser mayor a 0
+    /// - El tamaño de página debe estar entre 1 y 200
+    /// </remarks>
+    /// <param name="page">Número de página (por defecto: 1, mínimo: 1)</param>
+    /// <param name="pageSize">Tamaño de página (por defecto: 200, máximo recomendado: 200)</param>
+    /// <returns>Lista paginada de productos activos con información de paginación</returns>
+    [HttpGet]
+    [ProducesResponseType(typeof(ApiResponse<List<ProductDto>>), 200)]
+    [ProducesResponseType(typeof(ApiResponse), 401)]
+    [ProducesResponseType(typeof(ApiResponse), 500)]
+    public async Task<IActionResult> GetProducts(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 200)
+    {
+        // Implementación...
+    }
+}
+```
+
+**Configuración Requerida:**
+
+1. **En el .csproj:**
+```xml
+<PropertyGroup>
+  <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  <NoWarn>$(NoWarn);1591</NoWarn>
+</PropertyGroup>
+```
+
+2. **En Program.cs (Swagger):**
+```csharp
+builder.Services.AddSwaggerGen(c =>
+{
+    // Incluir comentarios XML en la documentación (API y Application)
+    var xmlFileApi = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+    var xmlPathApi = Path.Combine(AppContext.BaseDirectory, xmlFileApi);
+    if (File.Exists(xmlPathApi))
+    {
+        c.IncludeXmlComments(xmlPathApi);
+    }
+    
+    // Incluir XML de Application (donde están los DTOs)
+    var xmlFileApp = "{Company}.{Module}.Application.xml";
+    var xmlPathApp = Path.Combine(AppContext.BaseDirectory, xmlFileApp);
+    if (File.Exists(xmlPathApp))
+    {
+        c.IncludeXmlComments(xmlPathApp);
+    }
+});
+```
+
+**Reglas Críticas (OBLIGATORIAS - SIN EXCEPCIONES):**
+
+**Para Controllers:**
+- ✅ **OBLIGATORIO:** `<summary>` con descripción del controller
+- ✅ **RECOMENDADO:** `<remarks>` si el controller tiene funcionalidad especial
+
+**Para Métodos Públicos (Endpoints):**
+- ✅ **OBLIGATORIO:** `<summary>` con descripción breve y clara del endpoint
+- ✅ **OBLIGATORIO:** `<remarks>` con descripción detallada que incluya:
+  - Funcionalidad específica del endpoint
+  - Validaciones realizadas
+  - Comportamiento especial o casos de uso
+  - Notas importantes para el consumidor (⚠️ IMPORTANTE)
+  - Ejemplos de uso (si aplica)
+  - Campos en la respuesta (si aplica)
+  - Formato del request (si aplica)
+- ✅ **OBLIGATORIO:** `<param name="paramName">` para TODOS los parámetros (query, route, body)
+- ✅ **OBLIGATORIO:** `<returns>` con descripción clara de lo que retorna
+- ✅ **OBLIGATORIO:** `[ProducesResponseType]` para TODOS los códigos de respuesta posibles:
+  - 200 OK (éxito)
+  - 201 Created (creación exitosa)
+  - 400 Bad Request (validación fallida)
+  - 401 Unauthorized (no autenticado)
+  - 403 Forbidden (sin permisos)
+  - 404 Not Found (recurso no encontrado)
+  - 409 Conflict (duplicado)
+  - 500 Internal Server Error (error del servidor)
+
+**Configuración Requerida:**
+- ✅ **OBLIGATORIO:** Generar XML habilitando `<GenerateDocumentationFile>true</GenerateDocumentationFile>` en el .csproj
+- ✅ **OBLIGATORIO:** Incluir XML en Swagger configurando `c.IncludeXmlComments()` en `Program.cs`
+- ✅ **OBLIGATORIO:** Incluir XML de Application layer (donde están los DTOs) en Swagger
+
+**❌ NO se acepta:**
+- ❌ Endpoints sin `<summary>`
+- ❌ Endpoints sin `<remarks>` (aunque sea un endpoint simple)
+- ❌ Parámetros sin `<param name="paramName">`
+- ❌ Métodos sin `<returns>`
+- ❌ Falta de `[ProducesResponseType]` para códigos de respuesta
+- ❌ Documentación incompleta o genérica
+- ❌ "Este endpoint hace X" sin explicar validaciones, campos, ejemplos, etc.
 
 ## 🚫 Anti-patrones a Evitar
 
@@ -1548,6 +1821,21 @@ throw new Exception("Error occurred"); // ❌ MAL
 
 // ❌ Sin parametrizar consultas
 command.CommandText = $"SELECT * FROM Users WHERE Id = {id}"; // ❌ MAL
+
+// ❌ Sin documentación XML
+public async Task<IActionResult> GetProducts() // ❌ MAL - Falta documentación XML
+{
+    // ...
+}
+
+// ❌ Documentación XML incompleta
+/// <summary>
+/// Obtiene productos
+/// </summary>
+public async Task<IActionResult> GetProducts() // ❌ MAL - Falta <remarks>, <param>, <returns>
+{
+    // ...
+}
 ```
 
 ### Reglas Generales a Evitar
@@ -1562,6 +1850,10 @@ command.CommandText = $"SELECT * FROM Users WHERE Id = {id}"; // ❌ MAL
 - ❌ NO mantener conexiones abiertas fuera de `using`
 - ❌ NO exponer mensajes de Oracle en respuestas
 - ❌ NO almacenar credenciales en código fuente
+- ❌ NO crear controllers o métodos públicos sin documentación XML completa
+- ❌ NO omitir `<remarks>` en métodos complejos o que requieren explicación adicional
+- ❌ NO omitir `<param>` para parámetros de métodos públicos
+- ❌ NO omitir `<returns>` en métodos que retornan valores
 
 ## ✅ Ejemplos de Estructura Correcta
 

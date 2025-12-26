@@ -94,48 +94,29 @@ public class SincArchivoDealerDto
 public class CrearSincArchivoDealerDto
 {
     /// <summary>
-    /// Nombre del proceso de sincronización (ej: ProductsCatalog).
-    /// </summary>
-    [Required(ErrorMessage = "El proceso es requerido")]
-    [StringLength(400, ErrorMessage = "El proceso no puede exceder 400 caracteres")]
-    public string Proceso { get; set; } = string.Empty;
-
-    /// <summary>
     /// ID de la carga de archivo de sincronización relacionada (FK).
+    /// Debe existir en CO_CARGAARCHIVOSINCRONIZACION y estar activo (COCA_ACTUAL=1).
     /// </summary>
     [Required(ErrorMessage = "El ID de carga de archivo de sincronización es requerido")]
     [Range(1, int.MaxValue, ErrorMessage = "El ID de carga debe ser mayor a 0")]
     public int CargaArchivoSincronizacionId { get; set; }
 
     /// <summary>
-    /// Sistema DMS origen.
-    /// </summary>
-    [Required(ErrorMessage = "El DMS origen es requerido")]
-    [StringLength(400, ErrorMessage = "El DMS origen no puede exceder 400 caracteres")]
-    public string DmsOrigen { get; set; } = string.Empty;
-
-    /// <summary>
-    /// Código BAC del dealer.
+    /// Código BAC del dealer (DEALERID en CO_DISTRIBUIDORES).
     /// </summary>
     [Required(ErrorMessage = "El código BAC del dealer es requerido")]
     [StringLength(100, ErrorMessage = "El código BAC del dealer no puede exceder 100 caracteres")]
     public string DealerBac { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Nombre del dealer.
-    /// </summary>
-    [Required(ErrorMessage = "El nombre del dealer es requerido")]
-    [StringLength(400, ErrorMessage = "El nombre del dealer no puede exceder 400 caracteres")]
-    public string NombreDealer { get; set; } = string.Empty;
-
-    // NOTA: FechaSincronizacion se calcula automáticamente en el servicio (no se envía en el request)
-
-    /// <summary>
-    /// Número de registros sincronizados.
-    /// </summary>
-    [Required(ErrorMessage = "El número de registros sincronizados es requerido")]
-    [Range(0, int.MaxValue, ErrorMessage = "El número de registros debe ser mayor o igual a 0")]
-    public int RegistrosSincronizados { get; set; }
+    // NOTA: Los siguientes campos se calculan automáticamente y NO deben enviarse en el request:
+    // - proceso: Se obtiene de CO_CARGAARCHIVOSINCRONIZACION.COCA_PROCESO mediante JOIN
+    // - registrosSincronizados: Se obtiene de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS
+    // - dmsOrigen: Se consulta de CO_DISTRIBUIDORES usando dealerBac (DEALERID)
+    // - nombreDealer: Se consulta de CO_DISTRIBUIDORES usando dealerBac (DEALERID)
+    // - fechaSincronizacion: Se calcula automáticamente con hora de México
+    // - sincArchivoDealerId: Se genera automáticamente por secuencia
+    // - fechaAlta: SYSDATE
+    // - usuarioAlta: Se toma del JWT token
 }
 
 /// <summary>

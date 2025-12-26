@@ -8,13 +8,17 @@ public class SincArchivoDealerDuplicadoException : Exception
     public string Proceso { get; }
     public int CargaArchivoSincronizacionId { get; }
     public string DealerBac { get; }
+    public DateTime? FechaSincronizacion { get; }
 
-    public SincArchivoDealerDuplicadoException(string proceso, int cargaArchivoSincronizacionId, string dealerBac)
-        : base($"Ya existe un registro para el proceso '{proceso}', cargaArchivoSincronizacionId '{cargaArchivoSincronizacionId}' y dealer '{dealerBac}'")
+    public SincArchivoDealerDuplicadoException(string proceso, int cargaArchivoSincronizacionId, string dealerBac, DateTime? fechaSincronizacion = null)
+        : base(fechaSincronizacion.HasValue
+            ? $"Ya existe un registro para el proceso '{proceso}', cargaArchivoSincronizacionId '{cargaArchivoSincronizacionId}' y dealer '{dealerBac}'. Fecha de sincronización previa: {fechaSincronizacion.Value:dd/MM/yyyy HH:mm:ss}"
+            : $"Ya existe un registro para el proceso '{proceso}', cargaArchivoSincronizacionId '{cargaArchivoSincronizacionId}' y dealer '{dealerBac}'")
     {
         Proceso = proceso;
         CargaArchivoSincronizacionId = cargaArchivoSincronizacionId;
         DealerBac = dealerBac;
+        FechaSincronizacion = fechaSincronizacion;
     }
 }
 

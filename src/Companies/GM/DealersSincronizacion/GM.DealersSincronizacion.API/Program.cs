@@ -1,6 +1,6 @@
-using GM.CatalogSync.Application.Services;
-using GM.CatalogSync.Domain.Interfaces;
-using GM.CatalogSync.Infrastructure.Repositories;
+using GM.DealersSincronizacion.Application.Services;
+using GM.DealersSincronizacion.Domain.Interfaces;
+using GM.DealersSincronizacion.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -29,7 +29,7 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .Enrich.With(new MexicoTimeEnricher())
     .WriteTo.Console(outputTemplate: "[{MexicoTime:HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-    .WriteTo.File("Logs/log-.txt", 
+    .WriteTo.File("Logs/log-.txt",
         rollingInterval: RollingInterval.Day,
         outputTemplate: "[{MexicoTime:yyyy-MM-dd HH:mm:ss}] [{Level:u3}] {Message:lj}{NewLine}{Exception}")
     .Enrich.FromLogContext()
@@ -46,9 +46,9 @@ builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "GM CatalogSync API",
+        Title = "GM DealersSincronizacion API",
         Version = "v1",
-        Description = "API para sincronización de catálogos GM"
+        Description = "API para sincronización de productos para dealers GM"
     });
 
     // Incluir comentarios XML en la documentación (API y Application)
@@ -60,7 +60,7 @@ builder.Services.AddSwaggerGen(c =>
     }
     
     // Incluir XML de Application (donde están los DTOs)
-    var xmlFileApp = "GM.CatalogSync.Application.xml";
+    var xmlFileApp = "GM.DealersSincronizacion.Application.xml";
     var xmlPathApp = Path.Combine(AppContext.BaseDirectory, xmlFileApp);
     if (File.Exists(xmlPathApp))
     {
@@ -71,11 +71,11 @@ builder.Services.AddSwaggerGen(c =>
     c.TagActionsBy(api =>
     {
         var path = api.RelativePath ?? "";
-        // Extraer el nombre del recurso del path: /api/v1/gm/catalog-sync/{recurso}
+        // Extraer el nombre del recurso del path: /api/v1/gm/dealer-sinc-productos/{recurso}
         var segments = path.Split('/');
         if (segments.Length >= 5)
         {
-            // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
+            // Convertir kebab-case a PascalCase: "dealer-sinc-productos" -> "DealerSincProductos"
             var resource = segments[4].Split('-')
                 .Select(s => char.ToUpper(s[0]) + s.Substring(1).ToLower())
                 .Aggregate((a, b) => a + b);
@@ -242,22 +242,17 @@ builder.Services.AddScoped<IOracleConnectionFactory>(sp =>
     new OracleConnectionFactory(connectionString, sp.GetService<ILogger<OracleConnectionFactory>>()));
 
 // ⚙️ Configurar Dependency Injection
-// Productos
+// Repositories
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
-builder.Services.AddScoped<IProductoService, ProductoService>();
-
-// Carga de Archivos de Sincronización
 builder.Services.AddScoped<ICargaArchivoSincRepository, CargaArchivoSincRepository>();
-builder.Services.AddScoped<ICargaArchivoSincService, CargaArchivoSincService>();
-
-// Sincronización de Archivos por Dealer
 builder.Services.AddScoped<ISincArchivoDealerRepository, SincArchivoDealerRepository>();
-builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
 builder.Services.AddScoped<IDistribuidorRepository, DistribuidorRepository>();
 
-// Foto de Dealer Productos
-builder.Services.AddScoped<IFotoDealerProductosRepository, FotoDealerProductosRepository>();
-builder.Services.AddScoped<IFotoDealerProductosService, FotoDealerProductosService>();
+// Services
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProductoService, ProductoService>();
+builder.Services.AddScoped<ICargaArchivoSincService, CargaArchivoSincService>();
+builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
 
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
@@ -284,7 +279,7 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // ⚙️ Configurar PathBase para sub-aplicaciones en IIS
-// Cuando la app se ejecuta bajo una ruta como /GM.CatalogSync.API
+// Cuando la app se ejecuta bajo una ruta como /GM.DealersSincronizacion.API
 // IIS envía el header X-Forwarded-PathBase o se puede configurar manualmente
 var pathBase = app.Configuration["PathBase"];
 if (!string.IsNullOrEmpty(pathBase))
@@ -302,7 +297,7 @@ app.UseSwagger();
 app.UseSwaggerUI(c =>
 {
     // Usar ruta relativa para que funcione en sub-aplicaciones IIS
-    c.SwaggerEndpoint("v1/swagger.json", "GM CatalogSync API v1");
+    c.SwaggerEndpoint("v1/swagger.json", "GM DealersSincronizacion API v1");
     c.RoutePrefix = "swagger"; // Swagger en /swagger
     
     // Configurar persistencia del token en Swagger UI
@@ -319,7 +314,7 @@ app.UseSwaggerUI(c =>
 app.MapScalarApiReference(options =>
 {
     options
-        .WithTitle("GM CatalogSync API")
+        .WithTitle("GM DealersSincronizacion API")
         .WithDefaultHttpClient(ScalarTarget.CSharp, ScalarClient.HttpClient)
         .WithTheme(ScalarTheme.BluePlanet);
 });
@@ -357,9 +352,10 @@ app.Use(async (context, next) =>
     }
     await next();
 });
+
 app.MapControllers();
 
-Log.Information("🚀 GM CatalogSync API iniciada");
+Log.Information("🚀 GM DealersSincronizacion API iniciada");
 
 app.Run();
 
@@ -371,3 +367,4 @@ public class JwtConfig
     public string Audience { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
 }
+

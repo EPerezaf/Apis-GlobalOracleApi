@@ -51,6 +51,36 @@ namespace Shared.Security
 
             return currentUser;
         }
+
+        /// <summary>
+        /// Obtiene el DealerBac del usuario autenticado desde el JWT token
+        /// </summary>
+        /// <param name="user">ClaimsPrincipal del contexto HTTP</param>
+        /// <param name="logger">Logger opcional para registrar información</param>
+        /// <returns>DealerBac del usuario</returns>
+        /// <exception cref="UnauthorizedAccessException">Si el usuario no está autenticado o no tiene DealerBac</exception>
+        public static string GetDealerBac(ClaimsPrincipal? user, ILogger? logger = null)
+        {
+            if (user == null || user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                logger?.LogWarning("⚠️ Usuario no autenticado - no se puede obtener DealerBac");
+                throw new UnauthorizedAccessException("Usuario no autenticado");
+            }
+
+            // Intentar obtener dealerBac del claim "DEALERBAC" (prioridad)
+            var dealerBac = user.FindFirst("DEALERBAC")?.Value
+                ?? user.FindFirst("USUARIO")?.Value
+                ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrWhiteSpace(dealerBac))
+            {
+                logger?.LogWarning("⚠️ DealerBac no encontrado en el token");
+                throw new UnauthorizedAccessException("DealerBac no encontrado en el token");
+            }
+
+            logger?.LogDebug("🏪 DealerBac obtenido: {DealerBac}", dealerBac);
+            return dealerBac;
+        }
     }
 }
 
