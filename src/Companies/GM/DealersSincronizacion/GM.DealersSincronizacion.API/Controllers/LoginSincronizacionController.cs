@@ -61,7 +61,10 @@ public class LoginSincronizacionController : ControllerBase
     /// **Campos en la respuesta:**
     /// - `token`: Token JWT que debe usarse en las peticiones subsiguientes
     /// - `dealerBac`: Código BAC del dealer autenticado
-    /// - `expiresIn`: Tiempo de expiración del token en segundos (86400 = 24 horas)
+    /// - `nombre`: Nombre del dealer (obtenido de CO_DISTRIBUIDORES.CODI_NOMBRE)
+    /// - `razonSocial`: Razón social del dealer (obtenido de CO_DISTRIBUIDORES.CODI_RAZONSOCIAL)
+    /// - `dms`: Sistema DMS del dealer (obtenido de CO_DISTRIBUIDORES.CODI_DMS, por defecto "GDMS" si está vacío)
+    /// - `expiresAt`: Fecha y hora de expiración del token (formato ISO 8601)
     /// 
     /// ⚠️ **IMPORTANTE:**
     /// - ✅ El token debe incluirse en todas las peticiones subsiguientes mediante el header `Authorization: Bearer {token}`

@@ -2,6 +2,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using GM.DealersSincronizacion.Application.DTOs;
+using GM.DealersSincronizacion.Domain.Interfaces;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.IdentityModel.Tokens;
@@ -18,6 +19,7 @@ public class AuthService : IAuthService
 {
     private readonly IConfiguration _configuration;
     private readonly ILogger<AuthService> _logger;
+    private readonly IDistribuidorRepository _distribuidorRepository;
 
     // Dummy data para validación (en producción, esto vendría de la BD)
     private static readonly Dictionary<string, string> DummyDealers = new()
@@ -71,10 +73,14 @@ public class AuthService : IAuthService
         { "326599", "326599#2025;" }  // CHEVROLET CUAUTLA
     };
 
-    public AuthService(IConfiguration configuration, ILogger<AuthService> logger)
+    public AuthService(
+        IConfiguration configuration,
+        ILogger<AuthService> logger,
+        IDistribuidorRepository distribuidorRepository)
     {
         _configuration = configuration;
         _logger = logger;
+        _distribuidorRepository = distribuidorRepository;
     }
 
     /// <inheritdoc />
@@ -98,12 +104,24 @@ public class AuthService : IAuthService
         // Generar token JWT
         var token = await GenerateJwtTokenAsync(request.DealerBac);
 
-        _logger.LogInformation("✅ [AUTH] Login exitoso para dealer: {DealerBac}", request.DealerBac);
+        // Consultar información del distribuidor desde CO_DISTRIBUIDORES
+        var distribuidor = await _distribuidorRepository.ObtenerPorDealerBacAsync(request.DealerBac);
+        
+        // Si no se encuentra el distribuidor, usar valores por defecto
+        var nombre = distribuidor?.Nombre ?? string.Empty;
+        var razonSocial = distribuidor?.RazonSocial ?? string.Empty;
+        var dms = string.IsNullOrWhiteSpace(distribuidor?.Dms) ? "GDMS" : distribuidor.Dms;
+
+        _logger.LogInformation("✅ [AUTH] Login exitoso para dealer: {DealerBac}, Nombre: {Nombre}, DMS: {Dms}",
+            request.DealerBac, nombre, dms);
 
         return new LoginResponseDto
         {
             Token = token.Token,
             DealerBac = request.DealerBac,
+            Nombre = nombre,
+            RazonSocial = razonSocial,
+            Dms = dms,
             ExpiresAt = token.ExpiresAt
         };
     }
