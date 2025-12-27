@@ -3,14 +3,14 @@ using GM.CatalogSync.Domain.Entities;
 namespace GM.CatalogSync.Domain.Interfaces;
 
 /// <summary>
-/// Interfaz del repositorio para Foto de Dealer Productos.
+/// Interfaz del repositorio para Foto de Dealers Carga Archivos Sincronización.
 /// </summary>
-public interface IFotoDealerProductosRepository
+public interface IFotoDealersCargaArchivosSincRepository
 {
     /// <summary>
     /// Obtiene un registro por su ID.
     /// </summary>
-    Task<FotoDealerProductos?> ObtenerPorIdAsync(int id);
+    Task<FotoDealersCargaArchivosSinc?> ObtenerPorIdAsync(int id);
 
     /// <summary>
     /// Obtiene todos los registros con filtros opcionales y paginación.
@@ -21,7 +21,7 @@ public interface IFotoDealerProductosRepository
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
     /// <returns>Tupla con la lista de registros y el total de registros</returns>
-    Task<(List<FotoDealerProductos> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+    Task<(List<FotoDealersCargaArchivosSinc> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -49,14 +49,14 @@ public interface IFotoDealerProductosRepository
     /// <param name="entidades">Lista de entidades a crear</param>
     /// <param name="usuarioAlta">Usuario que realiza la operación</param>
     /// <returns>Lista de entidades creadas con IDs asignados</returns>
-    Task<List<FotoDealerProductos>> CrearBatchAsync(
-        List<FotoDealerProductos> entidades,
+    Task<List<FotoDealersCargaArchivosSinc>> CrearBatchAsync(
+        List<FotoDealersCargaArchivosSinc> entidades,
         string usuarioAlta);
 
     /// <summary>
     /// Obtiene un registro por ID con datos completos del JOIN (incluye FechaSincronizacion y TiempoSincronizacionHoras).
     /// </summary>
-    Task<FotoDealerProductosMap?> ObtenerPorIdCompletoAsync(int id);
+    Task<FotoDealersCargaArchivosSincMap?> ObtenerPorIdCompletoAsync(int id);
 
     /// <summary>
     /// Obtiene todos los registros con filtros y datos completos del JOIN (incluye FechaSincronizacion y TiempoSincronizacionHoras).
@@ -67,7 +67,7 @@ public interface IFotoDealerProductosRepository
     /// <param name="sincronizado">Filtro por estado de sincronización: null=todos, 0=no sincronizados, 1=sincronizados (opcional)</param>
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
-    Task<(List<FotoDealerProductosMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
+    Task<(List<FotoDealersCargaArchivosSincMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -79,9 +79,9 @@ public interface IFotoDealerProductosRepository
 /// <summary>
 /// Clase auxiliar para mapear resultados de JOIN con CO_CARGAARCHIVOSINCRONIZACION y CO_SINCRONIZACIONARCHIVOSDEALERS.
 /// </summary>
-public class FotoDealerProductosMap
+public class FotoDealersCargaArchivosSincMap
 {
-    public int FotoDealerProductosId { get; set; }
+    public int FotoDealersCargaArchivosSincId { get; set; }
     public int CargaArchivoSincronizacionId { get; set; }
     public string DealerBac { get; set; } = string.Empty;
     public string NombreDealer { get; set; } = string.Empty;
@@ -96,6 +96,7 @@ public class FotoDealerProductosMap
     public string? ProcesoCarga { get; set; }
     public DateTime? FechaCarga { get; set; }
     public DateTime? FechaSincronizacion { get; set; }
+    public string? TokenConfirmacion { get; set; }
     public decimal? TiempoSincronizacionHoras { get; set; }
     public int Sincronizado { get; set; }
 }

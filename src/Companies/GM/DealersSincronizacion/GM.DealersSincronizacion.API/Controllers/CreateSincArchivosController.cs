@@ -61,6 +61,7 @@ public class CreateSincArchivosController : ControllerBase
     /// - `dealerBac`: Se toma del JWT token (ej: "290487")
     /// - `nombreDealer`: Se consulta de `CO_DISTRIBUIDORES` usando `dealerBac` del JWT (ej: "CHEVROLET CAR ONE RUIZ CORTINES")
     /// - `fechaSincronizacion`: Se calcula automáticamente con hora de México
+    /// - `tokenConfirmacion`: Hash SHA256 generado automáticamente de: idCarga + dealerBac + fechaSincronizacion + registrosSincronizados
     /// - `sincArchivoDealerId`: ID único generado por secuencia
     /// - `fechaAlta`: Fecha y hora del servidor (SYSDATE)
     /// - `usuarioAlta`: Se toma del JWT token
@@ -79,6 +80,7 @@ public class CreateSincArchivosController : ControllerBase
     /// - ❌ NO enviar `registrosSincronizados` (se obtiene automáticamente de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS)
     /// - ❌ NO enviar `sincArchivoDealerId` (se genera automáticamente)
     /// - ❌ NO enviar `fechaSincronizacion` (se calcula automáticamente con hora de México)
+    /// - ❌ NO enviar `tokenConfirmacion` (se genera automáticamente con SHA256)
     /// - ❌ NO enviar `fechaAlta`, `usuarioAlta` (se calculan automáticamente)
     /// - ❌ NO enviar `dmsOrigen` (se consulta de CO_DISTRIBUIDORES automáticamente)
     /// - ❌ NO enviar `dealerBac` (se toma del JWT token)
@@ -90,6 +92,7 @@ public class CreateSincArchivosController : ControllerBase
     /// **Respuesta exitosa incluye:**
     /// - Registro de sincronización creado con todos sus campos
     /// - ID generado automáticamente
+    /// - Token de confirmación (hash SHA256) generado automáticamente
     /// - Timestamp de la operación
     /// - Datos del dealer consultados de `CO_DISTRIBUIDORES` (dmsOrigen, nombreDealer)
     /// </remarks>

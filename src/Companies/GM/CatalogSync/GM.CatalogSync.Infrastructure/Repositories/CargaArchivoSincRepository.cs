@@ -43,6 +43,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 COCA_DEALERSTOTALES as DealersTotales,
                 COCA_DEALERSSONCRONIZADOS as DealersSincronizados,
                 COCA_PORCDEALERSSINC as PorcDealersSinc,
+                COCA_TABLARELACION as TablaRelacion,
                 FECHAALTA as FechaAlta,
                 USUARIOALTA as UsuarioAlta,
                 FECHAMODIFICACION as FechaModificacion,
@@ -140,6 +141,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                         COCA_DEALERSTOTALES as DealersTotales,
                         COCA_DEALERSSONCRONIZADOS as DealersSincronizados,
                         COCA_PORCDEALERSSINC as PorcDealersSinc,
+                        COCA_TABLARELACION as TablaRelacion,
                         FECHAALTA as FechaAlta,
                         USUARIOALTA as UsuarioAlta,
                         FECHAMODIFICACION as FechaModificacion,
@@ -218,6 +220,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 COCA_DEALERSTOTALES,
                 COCA_DEALERSSONCRONIZADOS,
                 COCA_PORCDEALERSSINC,
+                COCA_TABLARELACION,
                 FECHAALTA,
                 USUARIOALTA
             ) VALUES (
@@ -231,6 +234,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 :DealersTotales,
                 0,
                 0.00,
+                :TablaRelacion,
                 SYSDATE,
                 :UsuarioAlta
             ) RETURNING COCA_CARGAARCHIVOSINID INTO :Id";
@@ -268,6 +272,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 parametrosInsert.Add("IdCarga", entidad.IdCarga);
                 parametrosInsert.Add("Registros", entidad.Registros);
                 parametrosInsert.Add("DealersTotales", entidad.DealersTotales);
+                parametrosInsert.Add("TablaRelacion", entidad.TablaRelacion);
                 parametrosInsert.Add("UsuarioAlta", usuarioAlta);
                 parametrosInsert.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
@@ -367,7 +372,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
             SET 
                 COCA_DEALERSTOTALES = (
                     SELECT COUNT(DISTINCT COSA_DEALERBAC)
-                    FROM CO_FOTODEALERPRODUCTOS
+                    FROM CO_FOTODEALERSCARGAARCHIVOSSINC
                     WHERE COFD_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
                 ),
                 FECHAMODIFICACION = SYSDATE,
@@ -414,7 +419,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
             SET 
                 COCA_DEALERSTOTALES = (
                     SELECT COUNT(DISTINCT COSA_DEALERBAC)
-                    FROM CO_FOTODEALERPRODUCTOS
+                    FROM CO_FOTODEALERSCARGAARCHIVOSSINC
                     WHERE COFD_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
                 ),
                 FECHAMODIFICACION = SYSDATE,
@@ -467,6 +472,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
             DealersTotales = map.DealersTotales,
             DealersSincronizados = map.DealersSincronizados,
             PorcDealersSinc = map.PorcDealersSinc,
+            TablaRelacion = map.TablaRelacion,
             FechaAlta = map.FechaAlta,
             UsuarioAlta = map.UsuarioAlta ?? string.Empty,
             FechaModificacion = map.FechaModificacion,
@@ -489,6 +495,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
         public int DealersTotales { get; set; }
         public int? DealersSincronizados { get; set; }
         public decimal? PorcDealersSinc { get; set; }
+        public string? TablaRelacion { get; set; }
         public DateTime FechaAlta { get; set; }
         public string? UsuarioAlta { get; set; }
         public DateTime? FechaModificacion { get; set; }

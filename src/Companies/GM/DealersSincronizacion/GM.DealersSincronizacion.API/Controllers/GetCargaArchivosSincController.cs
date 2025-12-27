@@ -44,12 +44,13 @@ public class GetCargaArchivosSincController : ControllerBase
     /// 
     /// **Campos en la respuesta:**
     /// - `cargaArchivoSincronizacionId`: ID único del registro de carga (PK)
-    /// - `proceso`: Nombre del proceso de sincronización (ej: "CatalogoProductos")
+    /// - `proceso`: Nombre del proceso de sincronización (ej: "ProductList")
     /// - `nombreArchivo`: Nombre del archivo cargado (ej: "catalogo_productos_23122025.xlsx")
     /// - `fechaCarga`: Fecha y hora en que se realizó la carga del archivo
     /// - `idCarga`: Identificador único de la carga (ej: "catalogo_productos_23122025_1359")
     /// - `registros`: Número total de registros procesados en la carga
     /// - `actual`: Indica si es la carga actual (siempre true en esta respuesta)
+    /// - `tablaRelacion`: Nombre de la tabla relacionada (opcional, ej: "CO_PRODUCTOS")
     /// 
     /// **Campos NO expuestos a dealers:**
     /// - `dealersTotales`: No se incluye en la respuesta (información interna)

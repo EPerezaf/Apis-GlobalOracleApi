@@ -38,6 +38,7 @@ internal class SincArchivoDealerMap
     public string? ProcesoCarga { get; set; }
     public DateTime? FechaCarga { get; set; }
     public decimal? TiempoSincronizacionHoras { get; set; }
+    public string? TokenConfirmacion { get; set; }
 }
 
 /// <summary>
@@ -76,6 +77,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 s.COSA_NOMBREDEALER as NombreDealer,
                 s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
                 s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                 s.FECHAALTA as FechaAlta,
                 s.USUARIOALTA as UsuarioAlta,
                 s.FECHAMODIFICACION as FechaModificacion,
@@ -113,6 +115,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 NombreDealer = resultado.NombreDealer,
                 FechaSincronizacion = resultado.FechaSincronizacion,
                 RegistrosSincronizados = resultado.RegistrosSincronizados,
+                TokenConfirmacion = resultado.TokenConfirmacion ?? string.Empty,
                 FechaAlta = resultado.FechaAlta,
                 UsuarioAlta = resultado.UsuarioAlta,
                 FechaModificacion = resultado.FechaModificacion,
@@ -195,6 +198,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                         s.COSA_NOMBREDEALER as NombreDealer,
                         s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
                         s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                        s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                         s.FECHAALTA as FechaAlta,
                         s.USUARIOALTA as UsuarioAlta,
                         s.FECHAMODIFICACION as FechaModificacion,
@@ -220,6 +224,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 NombreDealer = r.NombreDealer,
                 FechaSincronizacion = r.FechaSincronizacion,
                 RegistrosSincronizados = r.RegistrosSincronizados,
+                TokenConfirmacion = r.TokenConfirmacion ?? string.Empty,
                 FechaAlta = r.FechaAlta,
                 UsuarioAlta = r.UsuarioAlta,
                 FechaModificacion = r.FechaModificacion,
@@ -295,6 +300,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 s.COSA_NOMBREDEALER as NombreDealer,
                 s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
                 s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                 s.FECHAALTA as FechaAlta,
                 s.USUARIOALTA as UsuarioAlta,
                 s.FECHAMODIFICACION as FechaModificacion,
@@ -392,6 +398,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 COSA_NOMBREDEALER,
                 COSA_FECHASINCRONIZACION,
                 COSA_REGISTROSSINCRONIZADOS,
+                COSA_TOKENCONFIRMACION,
                 FECHAALTA,
                 USUARIOALTA
             ) VALUES (
@@ -402,6 +409,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 :NombreDealer,
                 :FechaSincronizacion,
                 :RegistrosSincronizados,
+                :TokenConfirmacion,
                 SYSDATE,
                 :UsuarioAlta
             ) RETURNING COSA_SINCARCHIVODEALERID INTO :Id";
@@ -465,6 +473,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 parametersInsert.Add("NombreDealer", entidad.NombreDealer);
                 parametersInsert.Add("FechaSincronizacion", entidad.FechaSincronizacion);
                 parametersInsert.Add("RegistrosSincronizados", entidad.RegistrosSincronizados);
+                parametersInsert.Add("TokenConfirmacion", entidad.TokenConfirmacion);
                 parametersInsert.Add("UsuarioAlta", usuarioAlta);
                 parametersInsert.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 

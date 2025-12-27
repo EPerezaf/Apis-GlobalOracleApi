@@ -12,6 +12,7 @@ public class CargaArchivoSincActualDto
     public string IdCarga { get; set; } = string.Empty;
     public int Registros { get; set; }
     public bool Actual { get; set; }
+    public string? TablaRelacion { get; set; }
     // NOTA: Los campos DealersTotales, DealersSincronizados y PorcDealersSinc no se exponen a los dealers
 }
 

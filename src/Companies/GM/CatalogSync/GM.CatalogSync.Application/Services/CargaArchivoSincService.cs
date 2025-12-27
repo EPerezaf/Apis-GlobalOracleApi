@@ -107,6 +107,7 @@ public class CargaArchivoSincService : ICargaArchivoSincService
             IdCarga = dto.IdCarga.Trim(),
             Registros = dto.Registros,
             DealersTotales = dto.DealersTotales,
+            TablaRelacion = !string.IsNullOrWhiteSpace(dto.TablaRelacion) ? dto.TablaRelacion.Trim() : null,
             DealersSincronizados = 0, // Default 0
             PorcDealersSinc = 0.00m, // Default 0.00
             Actual = true // Siempre se crea como actual
@@ -144,7 +145,7 @@ public class CargaArchivoSincService : ICargaArchivoSincService
                 cargaArchivoSincronizacionId.ToString());
         }
 
-        // Actualizar DealersTotales (cuenta dealers únicos en FotoDealerProductos)
+        // Actualizar DealersTotales (cuenta dealers únicos en FotoDealersCargaArchivosSinc)
         var filasAfectadas = await _repository.ActualizarDealersTotalesAsync(
             cargaArchivoSincronizacionId,
             usuarioModificacion);
@@ -194,6 +195,7 @@ public class CargaArchivoSincService : ICargaArchivoSincService
             DealersTotales = entidad.DealersTotales,
             DealersSincronizados = entidad.DealersSincronizados,
             PorcDealersSinc = entidad.PorcDealersSinc,
+            TablaRelacion = entidad.TablaRelacion,
             FechaAlta = entidad.FechaAlta,
             UsuarioAlta = entidad.UsuarioAlta,
             FechaModificacion = entidad.FechaModificacion,

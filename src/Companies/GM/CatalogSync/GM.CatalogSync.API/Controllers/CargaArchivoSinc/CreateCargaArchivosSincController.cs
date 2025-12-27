@@ -52,6 +52,9 @@ public class CreateCargaArchivosSincController : ControllerBase
     /// - `registros`: Cantidad de registros procesados (ej: 520)
     /// - `dealersTotales`: Número total de dealers a sincronizar (ej: 150)
     /// 
+    /// **Campos opcionales:**
+    /// - `tablaRelacion`: Nombre de la tabla relacionada (ej: "CO_PRODUCTOS")
+    /// 
     /// **Campos calculados automáticamente (NO enviar en el request):**
     /// - `cargaArchivoSincId`: ID único generado por secuencia de Oracle
     /// - `fechaCarga`: Se calcula automáticamente con hora de México
@@ -66,7 +69,8 @@ public class CreateCargaArchivosSincController : ControllerBase
     ///   "nombreArchivo": "products_gm_list.xlsx",
     ///   "idCarga": "products_catalog_16122025_1335",
     ///   "registros": 520,
-    ///   "dealersTotales": 150
+    ///   "dealersTotales": 150,
+    ///   "tablaRelacion": "CO_PRODUCTOS"
     /// }
     /// ```
     /// 

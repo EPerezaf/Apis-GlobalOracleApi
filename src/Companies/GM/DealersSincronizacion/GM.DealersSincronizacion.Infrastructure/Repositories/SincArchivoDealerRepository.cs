@@ -42,6 +42,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 s.COSA_NOMBREDEALER as NombreDealer,
                 s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
                 s.COSA_REGISTROSSINCRONIZADOS as RegistrosSincronizados,
+                s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                 s.FECHAALTA as FechaAlta,
                 s.USUARIOALTA as UsuarioAlta,
                 s.FECHAMODIFICACION as FechaModificacion,
@@ -96,6 +97,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 COSA_NOMBREDEALER,
                 COSA_FECHASINCRONIZACION,
                 COSA_REGISTROSSINCRONIZADOS,
+                COSA_TOKENCONFIRMACION,
                 FECHAALTA,
                 USUARIOALTA
             ) VALUES (
@@ -106,6 +108,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 :NombreDealer,
                 :FechaSincronizacion,
                 :RegistrosSincronizados,
+                :TokenConfirmacion,
                 :FechaAlta,
                 :UsuarioAlta
             )";
@@ -168,7 +171,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
 
             // ✅ Proceso y RegistrosSincronizados ya vienen de la carga en el Service
             // ✅ No se guarda COSA_PROCESO en la tabla (se obtiene mediante JOIN)
-            entidad.FechaSincronizacion = DateTimeHelper.GetMexicoDateTime();
+            // ✅ FechaSincronizacion y TokenConfirmacion ya se establecieron en el Service
             entidad.FechaAlta = DateTimeHelper.GetMexicoDateTime();
             entidad.UsuarioAlta = usuarioAlta;
 
@@ -182,6 +185,7 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                     NombreDealer = entidad.NombreDealer ?? "",
                     FechaSincronizacion = entidad.FechaSincronizacion,
                     RegistrosSincronizados = entidad.RegistrosSincronizados,
+                    TokenConfirmacion = entidad.TokenConfirmacion,
                     FechaAlta = entidad.FechaAlta,
                     UsuarioAlta = entidad.UsuarioAlta
                 }, transaction: transaction);

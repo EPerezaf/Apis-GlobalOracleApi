@@ -40,6 +40,7 @@ public class SincArchivoDealerDto
     public string NombreDealer { get; set; } = string.Empty;
     public DateTime FechaSincronizacion { get; set; }
     public int RegistrosSincronizados { get; set; }
+    public string TokenConfirmacion { get; set; } = string.Empty;
 }
 
 

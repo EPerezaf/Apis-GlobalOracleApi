@@ -66,6 +66,20 @@ public class SincArchivoDealerService : ISincArchivoDealerService
         _logger.LogInformation("✅ [SERVICE] Distribuidor encontrado. Nombre: {Nombre}, DMS: {Dms}",
             distribuidor.NombreDealer ?? distribuidor.Nombre, distribuidor.Dms);
 
+        // Calcular fecha de sincronización
+        var fechaSincronizacion = DateTimeHelper.GetMexicoDateTime();
+
+        // Generar token de confirmación: SHA256(idCarga + dealerBac + fechaSincronizacion + registrosSincronizados)
+        var tokenConfirmacion = HashHelper.GenerateTokenConfirmacion(
+            carga.IdCarga,
+            dealerBac,
+            fechaSincronizacion,
+            carga.Registros);
+
+        _logger.LogInformation(
+            "🔐 [SERVICE] Token de confirmación generado. IdCarga: {IdCarga}, DealerBac: {DealerBac}, Token: {Token}",
+            carga.IdCarga, dealerBac, tokenConfirmacion);
+
         // Crear entidad con datos del distribuidor y la carga
         // NOTA: proceso y registrosSincronizados se obtienen de la carga (CO_CARGAARCHIVOSINCRONIZACION)
         var entidad = new SincArchivoDealer
@@ -75,7 +89,9 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             DealerBac = dealerBac,
             NombreDealer = distribuidor.NombreDealer ?? distribuidor.Nombre,
             DmsOrigen = string.IsNullOrWhiteSpace(distribuidor.Dms) ? "GDMS" : distribuidor.Dms, // ✅ Valor por defecto "GDMS" si está vacío
-            RegistrosSincronizados = carga.Registros // ✅ Obtenido de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS
+            FechaSincronizacion = fechaSincronizacion, // Calculado automáticamente (hora de México)
+            RegistrosSincronizados = carga.Registros, // ✅ Obtenido de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS
+            TokenConfirmacion = tokenConfirmacion // ✅ Generado automáticamente con SHA256
         };
 
         // Guardar en repositorio
@@ -90,7 +106,8 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             DealerBac = resultado.DealerBac,
             NombreDealer = resultado.NombreDealer,
             FechaSincronizacion = resultado.FechaSincronizacion,
-            RegistrosSincronizados = resultado.RegistrosSincronizados
+            RegistrosSincronizados = resultado.RegistrosSincronizados,
+            TokenConfirmacion = resultado.TokenConfirmacion
         };
 
         _logger.LogInformation("✅ [SERVICE] Registro de sincronización creado exitosamente. ID: {Id}", resultadoDto.SincArchivoDealerId);

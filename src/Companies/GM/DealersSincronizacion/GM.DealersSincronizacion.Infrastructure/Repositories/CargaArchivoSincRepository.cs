@@ -39,6 +39,7 @@ public class CargaArchivoSincRepository : ICargaArchivoSincRepository
                 COCA_DEALERSTOTALES as DealersTotales,
                 COCA_DEALERSSONCRONIZADOS as DealersSincronizados,
                 COCA_PORCDEALERSSINC as PorcDealersSinc,
+                COCA_TABLARELACION as TablaRelacion,
                 FECHAALTA as FechaAlta,
                 USUARIOALTA as UsuarioAlta,
                 FECHAMODIFICACION as FechaModificacion,

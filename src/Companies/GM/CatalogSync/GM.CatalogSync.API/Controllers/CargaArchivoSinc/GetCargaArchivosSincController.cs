@@ -54,6 +54,7 @@ public class GetCargaArchivosSincController : ControllerBase
     /// - `idCarga`: Identificador único de la carga (debe ser único)
     /// - `registros`: Cantidad de registros procesados
     /// - `actual`: Indica si es la carga actual (true) o histórica (false)
+    /// - `tablaRelacion`: Nombre de la tabla relacionada (opcional)
     /// - Campos de auditoría: fechaAlta, usuarioAlta, fechaModificacion, usuarioModificacion
     /// 
     /// **Respuesta exitosa incluye:**

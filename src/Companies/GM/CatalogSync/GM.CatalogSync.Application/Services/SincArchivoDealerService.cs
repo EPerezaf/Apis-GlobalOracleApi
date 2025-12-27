@@ -141,6 +141,20 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             throw new SincArchivoDealerDuplicadoException(proceso, dto.CargaArchivoSincronizacionId, dto.DealerBac, registroExistente.FechaSincronizacion);
         }
 
+        // Calcular fecha de sincronización
+        var fechaSincronizacion = DateTimeHelper.GetMexicoDateTime();
+
+        // Generar token de confirmación: SHA256(idCarga + dealerBac + fechaSincronizacion + registrosSincronizados)
+        var tokenConfirmacion = HashHelper.GenerateTokenConfirmacion(
+            carga.IdCarga,
+            dto.DealerBac.Trim(),
+            fechaSincronizacion,
+            carga.Registros);
+
+        _logger.LogInformation(
+            "🔐 [SERVICE] Token de confirmación generado. IdCarga: {IdCarga}, DealerBac: {DealerBac}, Token: {Token}",
+            carga.IdCarga, dto.DealerBac.Trim(), tokenConfirmacion);
+
         // Crear entidad con datos obtenidos de la carga y distribuidor
         var entidad = new SincArchivoDealer
         {
@@ -149,8 +163,9 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             DmsOrigen = string.IsNullOrWhiteSpace(distribuidor.Dms) ? "GDMS" : distribuidor.Dms, // ✅ Obtenido de CO_DISTRIBUIDORES.CODI_DMS
             DealerBac = dto.DealerBac.Trim(),
             NombreDealer = distribuidor.NombreDealer ?? distribuidor.Nombre, // ✅ Obtenido de CO_DISTRIBUIDORES.CODI_NOMBRE
-            FechaSincronizacion = DateTimeHelper.GetMexicoDateTime(), // Calculado automáticamente (hora de México)
-            RegistrosSincronizados = carga.Registros // ✅ Obtenido de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS
+            FechaSincronizacion = fechaSincronizacion, // Calculado automáticamente (hora de México)
+            RegistrosSincronizados = carga.Registros, // ✅ Obtenido de CO_CARGAARCHIVOSINCRONIZACION.COCA_REGISTROS
+            TokenConfirmacion = tokenConfirmacion // ✅ Generado automáticamente con SHA256
         };
 
         // Crear registro
@@ -191,6 +206,7 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             NombreDealer = entidad.NombreDealer,
             FechaSincronizacion = entidad.FechaSincronizacion,
             RegistrosSincronizados = entidad.RegistrosSincronizados,
+            TokenConfirmacion = entidad.TokenConfirmacion,
             FechaAlta = entidad.FechaAlta,
             UsuarioAlta = entidad.UsuarioAlta,
             FechaModificacion = entidad.FechaModificacion,

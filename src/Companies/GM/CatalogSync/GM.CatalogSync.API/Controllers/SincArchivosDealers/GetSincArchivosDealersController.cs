@@ -59,6 +59,7 @@ public class GetSincArchivosDealersController : ControllerBase
     /// - `nombreDealer`: Nombre del dealer
     /// - `fechaSincronizacion`: Fecha de sincronización
     /// - `registrosSincronizados`: Cantidad de registros sincronizados
+    /// - `tokenConfirmacion`: Token de confirmación (hash SHA256) generado automáticamente
     /// - Campos de auditoría: fechaAlta, usuarioAlta, fechaModificacion, usuarioModificacion
     /// 
     /// **Respuesta exitosa incluye:**
@@ -158,6 +159,7 @@ public class GetSincArchivosDealersController : ControllerBase
     /// - `nombreDealer`: Nombre del dealer
     /// - `fechaSincronizacion`: Fecha de sincronización
     /// - `registrosSincronizados`: Cantidad de registros sincronizados
+    /// - `tokenConfirmacion`: Token de confirmación (hash SHA256) generado automáticamente
     /// - Campos de auditoría: fechaAlta, usuarioAlta, fechaModificacion, usuarioModificacion
     /// 
     /// **Respuesta exitosa incluye:**

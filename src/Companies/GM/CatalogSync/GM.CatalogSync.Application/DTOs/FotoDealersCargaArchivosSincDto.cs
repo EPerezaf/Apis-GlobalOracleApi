@@ -4,14 +4,14 @@ using System.Text.Json.Serialization;
 namespace GM.CatalogSync.Application.DTOs;
 
 /// <summary>
-/// DTO para lectura de Foto de Dealer Productos.
+/// DTO para lectura de Foto de Dealers Carga Archivos Sincronización.
 /// </summary>
-public class FotoDealerProductosDto
+public class FotoDealersCargaArchivosSincDto
 {
     /// <summary>
     /// Identificador único del registro.
     /// </summary>
-    public int FotoDealerProductosId { get; set; }
+    public int FotoDealersCargaArchivosSincId { get; set; }
 
     /// <summary>
     /// Identificador de la carga de archivo de sincronización (FK).
@@ -37,6 +37,11 @@ public class FotoDealerProductosDto
     /// Fecha de sincronización (desde CO_SINCRONIZACIONARCHIVOSDEALERS, puede ser null si no existe registro).
     /// </summary>
     public DateTime? FechaSincronizacion { get; set; }
+
+    /// <summary>
+    /// Token de confirmación (desde CO_SINCRONIZACIONARCHIVOSDEALERS, puede ser null si no existe registro).
+    /// </summary>
+    public string? TokenConfirmacion { get; set; }
 
     /// <summary>
     /// Tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga).
@@ -91,9 +96,9 @@ public class FotoDealerProductosDto
 }
 
 /// <summary>
-/// DTO para creación de Foto de Dealer Productos (para batch insert).
+/// DTO para creación de Foto de Dealers Carga Archivos Sincronización (para batch insert).
 /// </summary>
-public class CrearFotoDealerProductosDto
+public class CrearFotoDealersCargaArchivosSincDto
 {
     /// <summary>
     /// Identificador de la carga de archivo de sincronización (FK).
@@ -134,9 +139,9 @@ public class CrearFotoDealerProductosDto
 }
 
 /// <summary>
-/// DTO para carga batch de Fotos de Dealer Productos.
+/// DTO para carga batch de Fotos de Dealers Carga Archivos Sincronización.
 /// </summary>
-public class CrearFotoDealerProductosBatchDto
+public class CrearFotoDealersCargaArchivosSincBatchDto
 {
     /// <summary>
     /// Lista de registros a crear (formato JSON).
@@ -144,6 +149,6 @@ public class CrearFotoDealerProductosBatchDto
     [Required(ErrorMessage = "El campo 'json' es requerido")]
     [MinLength(1, ErrorMessage = "Debe incluir al menos un registro en 'json'")]
     [JsonPropertyName("json")]
-    public List<CrearFotoDealerProductosDto> Json { get; set; } = new();
+    public List<CrearFotoDealersCargaArchivosSincDto> Json { get; set; } = new();
 }
 

@@ -63,7 +63,7 @@ public interface ICargaArchivoSincRepository
         System.Data.IDbTransaction transaction);
 
     /// <summary>
-    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos.
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealersCargaArchivosSinc.
     /// </summary>
     /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
     /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>
@@ -73,7 +73,7 @@ public interface ICargaArchivoSincRepository
         string usuarioModificacion);
 
     /// <summary>
-    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos dentro de una transacción existente.
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealersCargaArchivosSinc dentro de una transacción existente.
     /// </summary>
     /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
     /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>

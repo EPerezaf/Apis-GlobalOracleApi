@@ -62,6 +62,7 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// - `dmsOrigen`: Se consulta de `CO_DISTRIBUIDORES.CODI_DMS` usando `dealerBac` (DEALERID). Si está vacío, se asigna "GDMS"
     /// - `nombreDealer`: Se consulta de `CO_DISTRIBUIDORES.CODI_NOMBRE` usando `dealerBac` (DEALERID)
     /// - `fechaSincronizacion`: Se calcula automáticamente con hora de México
+    /// - `tokenConfirmacion`: Hash SHA256 generado automáticamente de: idCarga + dealerBac + fechaSincronizacion + registrosSincronizados
     /// - `sincArchivoDealerId`: ID único generado por secuencia
     /// - `fechaAlta`: Fecha y hora del servidor (SYSDATE)
     /// - `usuarioAlta`: Se toma del JWT token
@@ -83,6 +84,7 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// - ❌ NO enviar `nombreDealer` (se consulta de CO_DISTRIBUIDORES automáticamente)
     /// - ❌ NO enviar `sincArchivoDealerId` (se genera automáticamente)
     /// - ❌ NO enviar `fechaSincronizacion` (se calcula automáticamente con hora de México)
+    /// - ❌ NO enviar `tokenConfirmacion` (se genera automáticamente con SHA256)
     /// - ❌ NO enviar `fechaAlta`, `usuarioAlta` (se calculan automáticamente)
     /// - ✅ La combinación `cargaArchivoSincronizacionId` + `dealerBac` debe ser única
     /// - ✅ El `cargaArchivoSincronizacionId` debe existir en `CO_CARGAARCHIVOSINCRONIZACION` y estar activo (`COCA_ACTUAL=1`)
@@ -91,6 +93,7 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// **Respuesta exitosa incluye:**
     /// - Registro de sincronización creado con todos sus campos
     /// - ID generado automáticamente
+    /// - Token de confirmación (hash SHA256) generado automáticamente
     /// - Timestamp de la operación
     /// </remarks>
     /// <param name="dto">Datos del nuevo registro de sincronización (solo cargaArchivoSincronizacionId y dealerBac)</param>
@@ -101,6 +104,7 @@ public class CreateSincArchivosDealersController : ControllerBase
     /// <response code="409">Ya existe un registro con la misma combinación cargaArchivoSincronizacionId/dealerBac (duplicado).</response>
     /// <response code="500">Error interno del servidor.</response>
     [HttpPost]
+    [ApiExplorerSettings(IgnoreApi = true)] // Oculto de Swagger - Este endpoint está deshabilitado
     [ProducesResponseType(typeof(ApiResponse<SincArchivoDealerDto>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status409Conflict)]

@@ -11,31 +11,31 @@ namespace GM.CatalogSync.Infrastructure.Repositories;
 
 
 /// <summary>
-/// Repository para acceso a datos de Foto de Dealer Productos usando Dapper.
-/// Tabla: CO_FOTODEALERPRODUCTOS
+/// Repository para acceso a datos de Foto de Dealers Carga Archivos Sincronización usando Dapper.
+/// Tabla: CO_FOTODEALERSCARGAARCHIVOSSINC
 /// </summary>
-public class FotoDealerProductosRepository : IFotoDealerProductosRepository
+public class FotoDealersCargaArchivosSincRepository : IFotoDealersCargaArchivosSincRepository
 {
     private readonly IOracleConnectionFactory _connectionFactory;
-    private readonly ILogger<FotoDealerProductosRepository> _logger;
+    private readonly ILogger<FotoDealersCargaArchivosSincRepository> _logger;
 
-    private const string TABLA = "CO_FOTODEALERPRODUCTOS";
+    private const string TABLA = "CO_FOTODEALERSCARGAARCHIVOSSINC";
     private const string SECUENCIA = "SEQ_COFD_FOTODEALERPRODUCTOSID";
 
-    public FotoDealerProductosRepository(
+    public FotoDealersCargaArchivosSincRepository(
         IOracleConnectionFactory connectionFactory,
-        ILogger<FotoDealerProductosRepository> logger)
+        ILogger<FotoDealersCargaArchivosSincRepository> logger)
     {
         _connectionFactory = connectionFactory;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<FotoDealerProductos?> ObtenerPorIdAsync(int id)
+    public async Task<FotoDealersCargaArchivosSinc?> ObtenerPorIdAsync(int id)
     {
         const string sql = @"
             SELECT 
-                f.COFD_FOTODEALERPRODUCTOSID as FotoDealerProductosId,
+                f.COFD_FOTODEALERPCARGAARCSINCID as FotoDealersCargaArchivosSincId,
                 f.COFD_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                 f.COSA_DEALERBAC as DealerBac,
                 f.COFD_NOMBREDEALER as NombreDealer,
@@ -55,30 +55,30 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
                     ELSE NULL
                 END as TiempoSincronizacionHoras
-            FROM CO_FOTODEALERPRODUCTOS f
+            FROM CO_FOTODEALERSCARGAARCHIVOSSINC f
             INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
             LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
                 AND f.COFD_COCA_CARGAARCHIVOSINID = s.COSA_COCA_CARGAARCHIVOSINID
-            WHERE f.COFD_FOTODEALERPRODUCTOSID = :Id";
+            WHERE f.COFD_FOTODEALERPCARGAARCSINCID = :Id";
 
         try
         {
-            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo foto dealer productos por ID: {Id}", id);
+            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo foto dealers carga archivos sinc por ID: {Id}", id);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var resultado = await connection.QueryFirstOrDefaultAsync<FotoDealerProductosMap>(sql, new { Id = id });
+            var resultado = await connection.QueryFirstOrDefaultAsync<FotoDealersCargaArchivosSincMap>(sql, new { Id = id });
 
             if (resultado == null)
             {
-                _logger.LogWarning("⚠️ [REPOSITORY] Foto dealer productos con ID {Id} no encontrado", id);
+                _logger.LogWarning("⚠️ [REPOSITORY] Foto dealers carga archivos sinc con ID {Id} no encontrado", id);
                 return null;
             }
 
             // Mapear a entidad (sin los campos del JOIN)
-            var entidad = new FotoDealerProductos
+            var entidad = new FotoDealersCargaArchivosSinc
             {
-                FotoDealerProductosId = resultado.FotoDealerProductosId,
+                FotoDealersCargaArchivosSincId = resultado.FotoDealersCargaArchivosSincId,
                 CargaArchivoSincronizacionId = resultado.CargaArchivoSincronizacionId,
                 DealerBac = resultado.DealerBac,
                 NombreDealer = resultado.NombreDealer,
@@ -91,7 +91,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                 UsuarioModificacion = resultado.UsuarioModificacion
             };
 
-            _logger.LogInformation("✅ [REPOSITORY] Foto dealer productos con ID {Id} obtenido exitosamente", id);
+            _logger.LogInformation("✅ [REPOSITORY] Foto dealers carga archivos sinc con ID {Id} obtenido exitosamente", id);
             return entidad;
         }
         catch (OracleException ex)
@@ -103,11 +103,11 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
     }
 
     /// <inheritdoc />
-    public async Task<FotoDealerProductosMap?> ObtenerPorIdCompletoAsync(int id)
+    public async Task<FotoDealersCargaArchivosSincMap?> ObtenerPorIdCompletoAsync(int id)
     {
         const string sql = @"
             SELECT 
-                f.COFD_FOTODEALERPRODUCTOSID as FotoDealerProductosId,
+                f.COFD_FOTODEALERPCARGAARCSINCID as FotoDealersCargaArchivosSincId,
                 f.COFD_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                 f.COSA_DEALERBAC as DealerBac,
                 f.COFD_NOMBREDEALER as NombreDealer,
@@ -122,6 +122,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                 c.COCA_PROCESO as ProcesoCarga,
                 c.COCA_FECHACARGA as FechaCarga,
                 s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                 CASE 
                     WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL AND c.COCA_FECHACARGA IS NOT NULL 
                     THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
@@ -131,27 +132,27 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
                     ELSE 0
                 END as Sincronizado
-            FROM CO_FOTODEALERPRODUCTOS f
+            FROM CO_FOTODEALERSCARGAARCHIVOSSINC f
             INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
             LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
                 AND f.COFD_COCA_CARGAARCHIVOSINID = s.COSA_COCA_CARGAARCHIVOSINID
-            WHERE f.COFD_FOTODEALERPRODUCTOSID = :Id";
+            WHERE f.COFD_FOTODEALERPCARGAARCSINCID = :Id";
 
         try
         {
-            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo foto dealer productos completo por ID: {Id}", id);
+            _logger.LogInformation("🗄️ [REPOSITORY] Obteniendo foto dealers carga archivos sinc completo por ID: {Id}", id);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var resultado = await connection.QueryFirstOrDefaultAsync<FotoDealerProductosMap>(sql, new { Id = id });
+            var resultado = await connection.QueryFirstOrDefaultAsync<FotoDealersCargaArchivosSincMap>(sql, new { Id = id });
 
             if (resultado == null)
             {
-                _logger.LogWarning("⚠️ [REPOSITORY] Foto dealer productos con ID {Id} no encontrado", id);
+                _logger.LogWarning("⚠️ [REPOSITORY] Foto dealers carga archivos sinc con ID {Id} no encontrado", id);
                 return null;
             }
 
-            _logger.LogInformation("✅ [REPOSITORY] Foto dealer productos completo con ID {Id} obtenido exitosamente", id);
+            _logger.LogInformation("✅ [REPOSITORY] Foto dealers carga archivos sinc completo con ID {Id} obtenido exitosamente", id);
             return resultado;
         }
         catch (OracleException ex)
@@ -163,7 +164,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
     }
 
     /// <inheritdoc />
-    public async Task<(List<FotoDealerProductosMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
+    public async Task<(List<FotoDealersCargaArchivosSincMap> data, int totalRecords)> ObtenerTodosConFiltrosCompletoAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -174,7 +175,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Obteniendo fotos dealer productos completos con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Página: {Page}, PageSize: {PageSize}",
+                "🗄️ [REPOSITORY] Obteniendo fotos dealers carga archivos sinc completos con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Página: {Page}, PageSize: {PageSize}",
                 cargaArchivoSincronizacionId?.ToString() ?? "null",
                 dealerBac ?? "null",
                 dms ?? "null",
@@ -232,7 +233,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
             if (totalRecords == 0)
             {
                 _logger.LogInformation("ℹ️ [REPOSITORY] No se encontraron registros con los filtros especificados");
-                return (new List<FotoDealerProductosMap>(), 0);
+                return (new List<FotoDealersCargaArchivosSincMap>(), 0);
             }
 
             // Aplicar paginación
@@ -243,7 +244,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
             var sql = $@"
                 SELECT * FROM (
                     SELECT 
-                        f.COFD_FOTODEALERPRODUCTOSID as FotoDealerProductosId,
+                        f.COFD_FOTODEALERPCARGAARCSINCID as FotoDealersCargaArchivosSincId,
                         f.COFD_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                         f.COSA_DEALERBAC as DealerBac,
                         f.COFD_NOMBREDEALER as NombreDealer,
@@ -258,6 +259,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                         c.COCA_PROCESO as ProcesoCarga,
                         c.COCA_FECHACARGA as FechaCarga,
                         s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                        s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                         CASE 
                             WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL AND c.COCA_FECHACARGA IS NOT NULL 
                             THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
@@ -267,7 +269,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                             WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
                             ELSE 0
                         END as Sincronizado,
-                        ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPRODUCTOSID DESC) AS RNUM
+                        ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPCARGAARCSINCID DESC) AS RNUM
                     FROM {TABLA} f
                     INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
                     LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
@@ -275,7 +277,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     {whereClause}
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
 
-            var resultados = await connection.QueryAsync<FotoDealerProductosMap>(sql, parameters);
+            var resultados = await connection.QueryAsync<FotoDealersCargaArchivosSincMap>(sql, parameters);
             var lista = resultados.ToList();
 
             _logger.LogInformation("✅ [REPOSITORY] Se obtuvieron {Cantidad} registros completos de {Total} totales (Página {Page})",
@@ -319,7 +321,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
     }
 
     /// <inheritdoc />
-    public async Task<(List<FotoDealerProductos> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+    public async Task<(List<FotoDealersCargaArchivosSinc> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -329,7 +331,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
         try
         {
             _logger.LogInformation(
-                "🗄️ [REPOSITORY] Consultando fotos dealer productos - CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Página: {Page}, PageSize: {PageSize}",
+                "🗄️ [REPOSITORY] Consultando fotos dealers carga archivos sinc - CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Página: {Page}, PageSize: {PageSize}",
                 cargaArchivoSincronizacionId?.ToString() ?? "Todos",
                 dealerBac ?? "Todos",
                 dms ?? "Todos",
@@ -366,7 +368,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
             if (totalRecords == 0)
             {
                 _logger.LogInformation("ℹ️ [REPOSITORY] No se encontraron registros con los filtros especificados");
-                return (new List<FotoDealerProductos>(), 0);
+                return (new List<FotoDealersCargaArchivosSinc>(), 0);
             }
 
             // Aplicar paginación
@@ -377,7 +379,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
             var sql = $@"
                 SELECT * FROM (
                     SELECT 
-                        f.COFD_FOTODEALERPRODUCTOSID as FotoDealerProductosId,
+                        f.COFD_FOTODEALERPCARGAARCSINCID as FotoDealersCargaArchivosSincId,
                         f.COFD_COCA_CARGAARCHIVOSINID as CargaArchivoSincronizacionId,
                         f.COSA_DEALERBAC as DealerBac,
                         f.COFD_NOMBREDEALER as NombreDealer,
@@ -392,6 +394,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                         c.COCA_PROCESO as ProcesoCarga,
                         c.COCA_FECHACARGA as FechaCarga,
                         s.COSA_FECHASINCRONIZACION as FechaSincronizacion,
+                        s.COSA_TOKENCONFIRMACION as TokenConfirmacion,
                         CASE 
                             WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL AND c.COCA_FECHACARGA IS NOT NULL 
                             THEN ROUND((s.COSA_FECHASINCRONIZACION - c.COCA_FECHACARGA) * 24, 2)
@@ -401,7 +404,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                             WHEN s.COSA_FECHASINCRONIZACION IS NOT NULL THEN 1
                             ELSE 0
                         END as Sincronizado,
-                        ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPRODUCTOSID DESC) AS RNUM
+                        ROW_NUMBER() OVER (ORDER BY f.COFD_FOTODEALERPCARGAARCSINCID DESC) AS RNUM
                     FROM {TABLA} f
                     INNER JOIN CO_CARGAARCHIVOSINCRONIZACION c ON f.COFD_COCA_CARGAARCHIVOSINID = c.COCA_CARGAARCHIVOSINID
                     LEFT JOIN CO_SINCRONIZACIONARCHIVOSDEALERS s ON f.COSA_DEALERBAC = s.COSA_DEALERBAC 
@@ -409,10 +412,10 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     {whereClause}
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
 
-            var resultados = await connection.QueryAsync<FotoDealerProductosMap>(sql, parameters);
-            var lista = resultados.Select(r => new FotoDealerProductos
+            var resultados = await connection.QueryAsync<FotoDealersCargaArchivosSincMap>(sql, parameters);
+            var lista = resultados.Select(r => new FotoDealersCargaArchivosSinc
             {
-                FotoDealerProductosId = r.FotoDealerProductosId,
+                FotoDealersCargaArchivosSincId = r.FotoDealersCargaArchivosSincId,
                 CargaArchivoSincronizacionId = r.CargaArchivoSincronizacionId,
                 DealerBac = r.DealerBac,
                 NombreDealer = r.NombreDealer,
@@ -445,7 +448,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
     {
         const string sql = @"
             SELECT COUNT(*)
-            FROM CO_FOTODEALERPRODUCTOS
+            FROM CO_FOTODEALERSCARGAARCHIVOSSINC
             WHERE COFD_COCA_CARGAARCHIVOSINID = :CargaArchivoSincronizacionId
             AND COSA_DEALERBAC = :DealerBac";
 
@@ -470,8 +473,8 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
     }
 
     /// <inheritdoc />
-    public async Task<List<FotoDealerProductos>> CrearBatchAsync(
-        List<FotoDealerProductos> entidades,
+    public async Task<List<FotoDealersCargaArchivosSinc>> CrearBatchAsync(
+        List<FotoDealersCargaArchivosSinc> entidades,
         string usuarioAlta)
     {
         if (entidades == null || !entidades.Any())
@@ -480,8 +483,8 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
         }
 
         const string sqlInsert = @"
-            INSERT INTO CO_FOTODEALERPRODUCTOS (
-                COFD_FOTODEALERPRODUCTOSID,
+            INSERT INTO CO_FOTODEALERSCARGAARCHIVOSSINC (
+                COFD_FOTODEALERPCARGAARCSINCID,
                 COFD_COCA_CARGAARCHIVOSINID,
                 COSA_DEALERBAC,
                 COFD_NOMBREDEALER,
@@ -500,7 +503,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                 :FechaRegistro,
                 SYSDATE,
                 :UsuarioAlta
-            ) RETURNING COFD_FOTODEALERPRODUCTOSID INTO :Id";
+            ) RETURNING COFD_FOTODEALERPCARGAARCSINCID INTO :Id";
 
         try
         {
@@ -513,7 +516,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
 
             try
             {
-                var entidadesCreadas = new List<FotoDealerProductos>();
+                var entidadesCreadas = new List<FotoDealersCargaArchivosSinc>();
 
                 foreach (var entidad in entidades)
                 {
@@ -530,7 +533,7 @@ public class FotoDealerProductosRepository : IFotoDealerProductosRepository
                     await connection.ExecuteAsync(sqlInsert, parametros, transaction);
 
                     var nuevoId = parametros.Get<int>("Id");
-                    entidad.FotoDealerProductosId = nuevoId;
+                    entidad.FotoDealersCargaArchivosSincId = nuevoId;
                     entidad.UsuarioAlta = usuarioAlta;
                     entidadesCreadas.Add(entidad);
                 }

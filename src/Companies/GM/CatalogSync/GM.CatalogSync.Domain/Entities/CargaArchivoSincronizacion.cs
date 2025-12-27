@@ -66,6 +66,12 @@ public class CargaArchivoSincronizacion
     /// </summary>
     public decimal? PorcDealersSinc { get; set; }
 
+    /// <summary>
+    /// Nombre de la tabla relacionada.
+    /// Columna: COCA_TABLARELACION
+    /// </summary>
+    public string? TablaRelacion { get; set; }
+
     // ========================================
     // CAMPOS DE AUDITORÍA
     // ========================================

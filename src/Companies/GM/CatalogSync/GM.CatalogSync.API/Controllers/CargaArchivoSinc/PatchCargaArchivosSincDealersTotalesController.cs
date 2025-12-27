@@ -31,18 +31,18 @@ public class PatchCargaArchivosSincDealersTotalesController : ControllerBase
     }
 
     /// <summary>
-    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealersCargaArchivosSinc
     /// </summary>
     /// <remarks>
     /// Este endpoint actualiza el campo `dealersTotales` de un registro de carga de archivo de sincronización
-    /// basándose en el conteo de dealers únicos (DISTINCT) que existen en la tabla `CO_FOTODEALERPRODUCTOS`
+    /// basándose en el conteo de dealers únicos (DISTINCT) que existen en la tabla `CO_FOTODEALERSCARGAARCHIVOSSINC`
     /// para el `cargaArchivoSincronizacionId` especificado.
     /// 
     /// **Ejemplo de uso:**
     /// - PATCH /api/v1/gm/catalog-sync/carga-archivos-sinc/1/dealers-totales
     /// 
     /// **Lógica de actualización:**
-    /// - Cuenta los dealers únicos (DISTINCT COSA_DEALERBAC) en `CO_FOTODEALERPRODUCTOS`
+    /// - Cuenta los dealers únicos (DISTINCT COSA_DEALERBAC) en `CO_FOTODEALERSCARGAARCHIVOSSINC`
     /// - Actualiza `COCA_DEALERSTOTALES` con ese conteo
     /// - Actualiza `FECHAMODIFICACION` y `USUARIOMODIFICACION` automáticamente
     /// 

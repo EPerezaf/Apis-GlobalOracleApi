@@ -8,34 +8,34 @@ using Shared.Contracts.Responses;
 using Shared.Exceptions;
 using Shared.Security;
 
-namespace GM.CatalogSync.API.Controllers.FotoDealerProductos;
+namespace GM.CatalogSync.API.Controllers.FotoDealersCargaArchivosSinc;
 
 /// <summary>
-/// Controller para creación batch de fotos de dealer productos.
-/// Ruta base: /api/v1/gm/catalog-sync/foto-dealer-productos
+/// Controller para creación batch de fotos de dealers carga archivos sincronización.
+/// Ruta base: /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/catalog-sync/foto-dealer-productos")]
+[Route("api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc")]
 [Produces("application/json")]
 [Authorize]
-public class CreateFotoDealerProductosController : ControllerBase
+public class CreateFotoDealersCargaArchivosSincController : ControllerBase
 {
-    private readonly IFotoDealerProductosService _service;
-    private readonly ILogger<CreateFotoDealerProductosController> _logger;
+    private readonly IFotoDealersCargaArchivosSincService _service;
+    private readonly ILogger<CreateFotoDealersCargaArchivosSincController> _logger;
 
-    public CreateFotoDealerProductosController(
-        IFotoDealerProductosService service,
-        ILogger<CreateFotoDealerProductosController> logger)
+    public CreateFotoDealersCargaArchivosSincController(
+        IFotoDealersCargaArchivosSincService service,
+        ILogger<CreateFotoDealersCargaArchivosSincController> logger)
     {
         _service = service;
         _logger = logger;
     }
 
     /// <summary>
-    /// Crea múltiples registros de fotos de dealer productos en batch
+    /// Crea múltiples registros de fotos de dealers carga archivos sincronización en batch
     /// </summary>
     /// <remarks>
-    /// Este endpoint permite crear múltiples registros de fotos de dealer productos en una sola operación (batch insert).
+    /// Este endpoint permite crear múltiples registros de fotos de dealers carga archivos sincronización en una sola operación (batch insert).
     /// 
     /// **Funcionalidad de la transacción:**
     /// - Todos los registros se insertan en una sola transacción
@@ -44,7 +44,7 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// 
     /// **Validaciones:**
     /// - El campo 'json' no puede estar vacío
-    /// - Cada registro debe cumplir con las validaciones de `CrearFotoDealerProductosDto`
+    /// - Cada registro debe cumplir con las validaciones de `CrearFotoDealersCargaArchivosSincDto`
     /// - Se valida la llave única (COFD_COCA_CARGAARCHIVOSINID, COSA_DEALERBAC) ANTES de insertar
     /// - Si hay duplicados, retorna error sin insertar ningún registro
     /// 
@@ -57,7 +57,7 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// 
     /// **Campos calculados automáticamente (NO enviar en el request):**
     /// - `fechaRegistro`: Se calcula automáticamente con hora de México
-    /// - `fotoDealerProductosId`: ID único generado por secuencia de Oracle
+    /// - `fotoDealersCargaArchivosSincId`: ID único generado por secuencia de Oracle
     /// - `fechaAlta`: Fecha y hora del servidor Oracle (SYSDATE)
     /// - `usuarioAlta`: Se toma del JWT token
     /// 
@@ -84,7 +84,7 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// ```
     /// 
     /// ⚠️ **IMPORTANTE:**
-    /// - ❌ NO enviar `fotoDealerProductosId` (se genera automáticamente)
+    /// - ❌ NO enviar `fotoDealersCargaArchivosSincId` (se genera automáticamente)
     /// - ❌ NO enviar `fechaRegistro` (se calcula automáticamente con hora de México)
     /// - ❌ NO enviar campos de auditoría (se calculan automáticamente)
     /// - ❌ NO enviar `usuarioAlta` (se toma del JWT token)
@@ -112,17 +112,17 @@ public class CreateFotoDealerProductosController : ControllerBase
     /// <response code="400">Error de validación en los datos enviados.</response>
     /// <response code="500">Error interno del servidor.</response>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<List<FotoDealerProductosDto>>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse<List<FotoDealersCargaArchivosSincDto>>), StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
-    public async Task<IActionResult> CrearBatch([FromBody] CrearFotoDealerProductosBatchDto dto)
+    public async Task<IActionResult> CrearBatch([FromBody] CrearFotoDealersCargaArchivosSincBatchDto dto)
     {
         var stopwatch = Stopwatch.StartNew();
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var userId = JwtUserHelper.GetCurrentUser(User, _logger);
 
         _logger.LogInformation(
-            "[{CorrelationId}] 📝 Inicio POST /foto-dealer-productos (batch). Usuario: {UserId}, Cantidad: {Cantidad}",
+            "[{CorrelationId}] 📝 Inicio POST /foto-dealers-carga-archivos-sinc (batch). Usuario: {UserId}, Cantidad: {Cantidad}",
             correlationId, userId, dto?.Json?.Count ?? 0);
 
         try
@@ -175,17 +175,17 @@ public class CreateFotoDealerProductosController : ControllerBase
 
             stopwatch.Stop();
             _logger.LogInformation(
-                "[{CorrelationId}] ✅ POST /foto-dealer-productos (batch) completado en {ElapsedMs}ms. {Cantidad} registros creados",
+                "[{CorrelationId}] ✅ POST /foto-dealers-carga-archivos-sinc (batch) completado en {ElapsedMs}ms. {Cantidad} registros creados",
                 correlationId, stopwatch.ElapsedMilliseconds, resultados.Count);
 
             return CreatedAtAction(
-                nameof(GetFotoDealerProductosController.ObtenerTodos),
-                "GetFotoDealerProductos",
+                nameof(GetFotoDealersCargaArchivosSincController.ObtenerTodos),
+                "GetFotoDealersCargaArchivosSinc",
                 null,
-                new ApiResponse<List<FotoDealerProductosDto>>
+                new ApiResponse<List<FotoDealersCargaArchivosSincDto>>
                 {
                     Success = true,
-                    Message = $"Se crearon exitosamente {resultados.Count} registros de fotos de dealer productos",
+                    Message = $"Se crearon exitosamente {resultados.Count} registros de fotos de dealers carga archivos sincronización",
                     Data = resultados,
                     Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
@@ -225,7 +225,7 @@ public class CreateFotoDealerProductosController : ControllerBase
         {
             stopwatch.Stop();
             _logger.LogError(ex,
-                "[{CorrelationId}] ❌ Error en POST /foto-dealer-productos (batch). Tiempo: {ElapsedMs}ms",
+                "[{CorrelationId}] ❌ Error en POST /foto-dealers-carga-archivos-sinc (batch). Tiempo: {ElapsedMs}ms",
                 correlationId, stopwatch.ElapsedMilliseconds);
 
             return StatusCode(500, new ApiResponse

@@ -3,14 +3,14 @@ using GM.CatalogSync.Application.DTOs;
 namespace GM.CatalogSync.Application.Services;
 
 /// <summary>
-/// Interfaz del servicio para Foto de Dealer Productos.
+/// Interfaz del servicio para Foto de Dealers Carga Archivos Sincronización.
 /// </summary>
-public interface IFotoDealerProductosService
+public interface IFotoDealersCargaArchivosSincService
 {
     /// <summary>
     /// Obtiene un registro por su ID.
     /// </summary>
-    Task<FotoDealerProductosDto?> ObtenerPorIdAsync(int id);
+    Task<FotoDealersCargaArchivosSincDto?> ObtenerPorIdAsync(int id);
 
     /// <summary>
     /// Obtiene todos los registros con filtros opcionales y paginación.
@@ -22,7 +22,7 @@ public interface IFotoDealerProductosService
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
     /// <returns>Tupla con la lista de registros y el total de registros</returns>
-    Task<(List<FotoDealerProductosDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+    Task<(List<FotoDealersCargaArchivosSincDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -36,8 +36,8 @@ public interface IFotoDealerProductosService
     /// <param name="dto">DTO con la lista de registros a crear</param>
     /// <param name="usuarioAlta">Usuario que realiza la operación</param>
     /// <returns>Lista de registros creados</returns>
-    Task<List<FotoDealerProductosDto>> CrearBatchAsync(
-        CrearFotoDealerProductosBatchDto dto,
+    Task<List<FotoDealersCargaArchivosSincDto>> CrearBatchAsync(
+        CrearFotoDealersCargaArchivosSincBatchDto dto,
         string usuarioAlta);
 }
 

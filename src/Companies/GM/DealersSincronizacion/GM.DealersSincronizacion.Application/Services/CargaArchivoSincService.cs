@@ -41,7 +41,8 @@ public class CargaArchivoSincService : ICargaArchivoSincService
             FechaCarga = carga.FechaCarga,
             IdCarga = carga.IdCarga,
             Registros = carga.Registros,
-            Actual = carga.Actual
+            Actual = carga.Actual,
+            TablaRelacion = carga.TablaRelacion
             // NOTA: DealersTotales, DealersSincronizados y PorcDealersSinc no se exponen a los dealers
         };
 

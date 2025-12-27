@@ -1,16 +1,16 @@
 namespace GM.CatalogSync.Domain.Entities;
 
 /// <summary>
-/// Entidad que representa un registro de foto de dealer productos.
-/// Tabla: CO_FOTODEALERPRODUCTOS
+/// Entidad que representa un registro de foto de dealers carga archivos sincronización.
+/// Tabla: CO_FOTODEALERSCARGAARCHIVOSSINC
 /// </summary>
-public class FotoDealerProductos
+public class FotoDealersCargaArchivosSinc
 {
     /// <summary>
     /// Identificador único del registro (PK).
-    /// Columna: COFD_FOTODEALERPRODUCTOSID
+    /// Columna: COFD_FOTODEALERPCARGAARCSINCID
     /// </summary>
-    public int FotoDealerProductosId { get; set; }
+    public int FotoDealersCargaArchivosSincId { get; set; }
 
     /// <summary>
     /// Identificador de la carga de archivo de sincronización (FK).

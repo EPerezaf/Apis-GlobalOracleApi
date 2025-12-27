@@ -255,9 +255,9 @@ builder.Services.AddScoped<ISincArchivoDealerRepository, SincArchivoDealerReposi
 builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
 builder.Services.AddScoped<IDistribuidorRepository, DistribuidorRepository>();
 
-// Foto de Dealer Productos
-builder.Services.AddScoped<IFotoDealerProductosRepository, FotoDealerProductosRepository>();
-builder.Services.AddScoped<IFotoDealerProductosService, FotoDealerProductosService>();
+// Foto de Dealers Carga Archivos Sincronización
+builder.Services.AddScoped<IFotoDealersCargaArchivosSincRepository, FotoDealersCargaArchivosSincRepository>();
+builder.Services.AddScoped<IFotoDealersCargaArchivosSincService, FotoDealersCargaArchivosSincService>();
 
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento

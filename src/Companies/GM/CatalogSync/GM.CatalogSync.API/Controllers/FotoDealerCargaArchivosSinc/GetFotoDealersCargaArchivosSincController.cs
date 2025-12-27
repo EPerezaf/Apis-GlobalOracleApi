@@ -6,34 +6,34 @@ using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
 using Shared.Security;
 
-namespace GM.CatalogSync.API.Controllers.FotoDealerProductos;
+namespace GM.CatalogSync.API.Controllers.FotoDealersCargaArchivosSinc;
 
 /// <summary>
-/// Controller para consulta de fotos de dealer productos.
-/// Ruta base: /api/v1/gm/catalog-sync/foto-dealer-productos
+/// Controller para consulta de fotos de dealers carga archivos sincronización.
+/// Ruta base: /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/catalog-sync/foto-dealer-productos")]
+[Route("api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc")]
 [Produces("application/json")]
 [Authorize]
-public class GetFotoDealerProductosController : ControllerBase
+public class GetFotoDealersCargaArchivosSincController : ControllerBase
 {
-    private readonly IFotoDealerProductosService _service;
-    private readonly ILogger<GetFotoDealerProductosController> _logger;
+    private readonly IFotoDealersCargaArchivosSincService _service;
+    private readonly ILogger<GetFotoDealersCargaArchivosSincController> _logger;
 
-    public GetFotoDealerProductosController(
-        IFotoDealerProductosService service,
-        ILogger<GetFotoDealerProductosController> logger)
+    public GetFotoDealersCargaArchivosSincController(
+        IFotoDealersCargaArchivosSincService service,
+        ILogger<GetFotoDealersCargaArchivosSincController> logger)
     {
         _service = service;
         _logger = logger;
     }
 
     /// <summary>
-    /// Obtiene todos los registros de fotos de dealer productos con filtros opcionales
+    /// Obtiene todos los registros de fotos de dealers carga archivos sincronización con filtros opcionales
     /// </summary>
     /// <remarks>
-    /// Este endpoint permite obtener el listado de fotos de dealer productos con filtros opcionales.
+    /// Este endpoint permite obtener el listado de fotos de dealers carga archivos sincronización con filtros opcionales.
     /// 
     /// **Parámetros opcionales:**
     /// - `cargaArchivoSincronizacionId`: Filtrar por ID de carga de archivo de sincronización
@@ -42,13 +42,13 @@ public class GetFotoDealerProductosController : ControllerBase
     /// - `sincronizado`: Filtrar por estado de sincronización (0 = no sincronizado, 1 = sincronizado). Si no se envía, retorna todos.
     /// 
     /// **Ejemplos de uso:**
-    /// - GET /api/v1/gm/catalog-sync/foto-dealer-productos
-    /// - GET /api/v1/gm/catalog-sync/foto-dealer-productos?cargaArchivoSincronizacionId=1
-    /// - GET /api/v1/gm/catalog-sync/foto-dealer-productos?dealerBac=DEALER001
-    /// - GET /api/v1/gm/catalog-sync/foto-dealer-productos?dms=CDK
+    /// - GET /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc
+    /// - GET /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc?cargaArchivoSincronizacionId=1
+    /// - GET /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc?dealerBac=DEALER001
+    /// - GET /api/v1/gm/catalog-sync/foto-dealers-carga-archivos-sinc?dms=CDK
     /// 
     /// **Campos en la respuesta:**
-    /// - `fotoDealerProductosId`: ID único del registro
+    /// - `fotoDealersCargaArchivosSincId`: ID único del registro
     /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización
     /// - `idCarga`: ID de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "products_catalog_16122025_1335")
     /// - `procesoCarga`: Proceso de la carga (desde CO_CARGAARCHIVOSINCRONIZACION, ej: "ProductsCatalog")
@@ -64,7 +64,7 @@ public class GetFotoDealerProductosController : ControllerBase
     /// - Campos de auditoría: fechaAlta, usuarioAlta, fechaModificacion, usuarioModificacion
     /// 
     /// **Respuesta exitosa incluye:**
-    /// - Lista de registros de fotos de dealer productos
+    /// - Lista de registros de fotos de dealers carga archivos sincronización
     /// - Información de paginación
     /// - Timestamp de la operación
     /// </remarks>
@@ -74,11 +74,11 @@ public class GetFotoDealerProductosController : ControllerBase
     /// <param name="sincronizado">Filtrar por estado de sincronización (0 = no sincronizado, 1 = sincronizado). Si no se envía, retorna todos.</param>
     /// <param name="page">Número de página (por defecto: 1)</param>
     /// <param name="pageSize">Tamaño de página (por defecto: 200)</param>
-    /// <returns>Lista de registros de fotos de dealer productos con información de paginación</returns>
-    /// <response code="200">Operación exitosa. Retorna lista de fotos de dealer productos con paginación.</response>
+    /// <returns>Lista de registros de fotos de dealers carga archivos sincronización con información de paginación</returns>
+    /// <response code="200">Operación exitosa. Retorna lista de fotos de dealers carga archivos sincronización con paginación.</response>
     /// <response code="500">Error interno del servidor.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<List<FotoDealerProductosDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse<List<FotoDealersCargaArchivosSincDto>>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
     public async Task<IActionResult> ObtenerTodos(
         [FromQuery] int? cargaArchivoSincronizacionId = null,
@@ -94,7 +94,7 @@ public class GetFotoDealerProductosController : ControllerBase
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] 🔷 Inicio GET /foto-dealer-productos. Filtros: CargaArchivoSincId={CargaId}, DealerBac={DealerBac}, DMS={Dms}, Sincronizado={Sincronizado}, Página={Page}, PageSize={PageSize}",
+                "[{CorrelationId}] 🔷 Inicio GET /foto-dealers-carga-archivos-sinc. Filtros: CargaArchivoSincId={CargaId}, DealerBac={DealerBac}, DMS={Dms}, Sincronizado={Sincronizado}, Página={Page}, PageSize={PageSize}",
                 correlationId, cargaArchivoSincronizacionId?.ToString() ?? "null", dealerBac ?? "null", dms ?? "null", sincronizado?.ToString() ?? "null", page, pageSize);
 
             var (resultados, totalRecords) = await _service.ObtenerTodosConFiltrosAsync(
@@ -109,10 +109,10 @@ public class GetFotoDealerProductosController : ControllerBase
 
             stopwatch.Stop();
             _logger.LogInformation(
-                "[{CorrelationId}] ✅ GET /foto-dealer-productos completado en {ElapsedMs}ms. {Count} registros obtenidos de {Total} totales (Página {Page} de {TotalPages})",
+                "[{CorrelationId}] ✅ GET /foto-dealers-carga-archivos-sinc completado en {ElapsedMs}ms. {Count} registros obtenidos de {Total} totales (Página {Page} de {TotalPages})",
                 correlationId, stopwatch.ElapsedMilliseconds, resultados.Count, totalRecords, page, totalPages);
 
-            return Ok(new ApiResponse<List<FotoDealerProductosDto>>
+            return Ok(new ApiResponse<List<FotoDealersCargaArchivosSincDto>>
             {
                 Success = true,
                 Message = resultados.Count > 0
@@ -133,7 +133,7 @@ public class GetFotoDealerProductosController : ControllerBase
         {
             stopwatch.Stop();
             _logger.LogError(ex,
-                "[{CorrelationId}] ❌ Error en GET /foto-dealer-productos después de {ElapsedMs}ms",
+                "[{CorrelationId}] ❌ Error en GET /foto-dealers-carga-archivos-sinc después de {ElapsedMs}ms",
                 correlationId, stopwatch.ElapsedMilliseconds);
             return StatusCode(500, new ApiResponse
             {

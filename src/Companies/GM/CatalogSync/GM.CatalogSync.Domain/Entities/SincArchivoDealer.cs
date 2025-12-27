@@ -48,6 +48,12 @@ public class SincArchivoDealer
     /// </summary>
     public int RegistrosSincronizados { get; set; }
 
+    /// <summary>
+    /// Token de confirmación generado automáticamente (COSA_TOKENCONFIRMACION).
+    /// Hash SHA256 de: idCarga + dealerBac + fechaSincronizacion + registrosSincronizados
+    /// </summary>
+    public string TokenConfirmacion { get; set; } = string.Empty;
+
     // Campos de auditoría
     /// <summary>
     /// Fecha de alta del registro (FECHAALTA).

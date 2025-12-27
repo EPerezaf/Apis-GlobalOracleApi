@@ -10,40 +10,40 @@ using ValidationError = Shared.Exceptions.ValidationError;
 namespace GM.CatalogSync.Application.Services;
 
 /// <summary>
-/// Implementación del servicio para Foto de Dealer Productos.
+/// Implementación del servicio para Foto de Dealers Carga Archivos Sincronización.
 /// </summary>
-public class FotoDealerProductosService : IFotoDealerProductosService
+public class FotoDealersCargaArchivosSincService : IFotoDealersCargaArchivosSincService
 {
-    private readonly IFotoDealerProductosRepository _repository;
-    private readonly ILogger<FotoDealerProductosService> _logger;
+    private readonly IFotoDealersCargaArchivosSincRepository _repository;
+    private readonly ILogger<FotoDealersCargaArchivosSincService> _logger;
 
-    public FotoDealerProductosService(
-        IFotoDealerProductosRepository repository,
-        ILogger<FotoDealerProductosService> logger)
+    public FotoDealersCargaArchivosSincService(
+        IFotoDealersCargaArchivosSincRepository repository,
+        ILogger<FotoDealersCargaArchivosSincService> logger)
     {
         _repository = repository;
         _logger = logger;
     }
 
     /// <inheritdoc />
-    public async Task<FotoDealerProductosDto?> ObtenerPorIdAsync(int id)
+    public async Task<FotoDealersCargaArchivosSincDto?> ObtenerPorIdAsync(int id)
     {
-        _logger.LogInformation("🔷 [SERVICE] Obteniendo foto dealer productos con ID {Id}", id);
+        _logger.LogInformation("🔷 [SERVICE] Obteniendo foto dealers carga archivos sinc con ID {Id}", id);
 
         var resultado = await _repository.ObtenerPorIdCompletoAsync(id);
 
         if (resultado == null)
         {
-            _logger.LogWarning("⚠️ [SERVICE] Foto dealer productos con ID {Id} no encontrado", id);
+            _logger.LogWarning("⚠️ [SERVICE] Foto dealers carga archivos sinc con ID {Id} no encontrado", id);
             return null;
         }
 
-        _logger.LogInformation("✅ [SERVICE] Foto dealer productos con ID {Id} obtenido exitosamente", id);
+        _logger.LogInformation("✅ [SERVICE] Foto dealers carga archivos sinc con ID {Id} obtenido exitosamente", id);
         return MapearADto(resultado);
     }
 
     /// <inheritdoc />
-    public async Task<(List<FotoDealerProductosDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+    public async Task<(List<FotoDealersCargaArchivosSincDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
         int? cargaArchivoSincronizacionId = null,
         string? dealerBac = null,
         string? dms = null,
@@ -52,7 +52,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
         int pageSize = 200)
     {
         _logger.LogInformation(
-            "🔷 [SERVICE] Obteniendo fotos dealer productos con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Sincronizado: {Sincronizado}, Página: {Page}, PageSize: {PageSize}",
+            "🔷 [SERVICE] Obteniendo fotos dealers carga archivos sinc con filtros. CargaArchivoSincId: {CargaId}, DealerBac: {DealerBac}, DMS: {Dms}, Sincronizado: {Sincronizado}, Página: {Page}, PageSize: {PageSize}",
             cargaArchivoSincronizacionId?.ToString() ?? "null",
             dealerBac ?? "null",
             dms ?? "null",
@@ -77,8 +77,8 @@ public class FotoDealerProductosService : IFotoDealerProductosService
     }
 
     /// <inheritdoc />
-    public async Task<List<FotoDealerProductosDto>> CrearBatchAsync(
-        CrearFotoDealerProductosBatchDto dto,
+    public async Task<List<FotoDealersCargaArchivosSincDto>> CrearBatchAsync(
+        CrearFotoDealersCargaArchivosSincBatchDto dto,
         string usuarioAlta)
     {
         _logger.LogInformation(
@@ -93,7 +93,7 @@ public class FotoDealerProductosService : IFotoDealerProductosService
 
         // Mapear DTOs a entidades
         var fechaRegistro = DateTimeHelper.GetMexicoDateTime(); // FechaRegistro se calcula automáticamente
-        var entidades = dto.Json.Select(dtoItem => new FotoDealerProductos
+        var entidades = dto.Json.Select(dtoItem => new FotoDealersCargaArchivosSinc
         {
             CargaArchivoSincronizacionId = dtoItem.CargaArchivoSincronizacionId,
             DealerBac = dtoItem.DealerBac,
@@ -184,10 +184,10 @@ public class FotoDealerProductosService : IFotoDealerProductosService
             entidadesCreadas.Count, usuarioAlta);
 
         // Para los registros creados, obtener datos completos con JOIN
-        var dtos = new List<FotoDealerProductosDto>();
+        var dtos = new List<FotoDealersCargaArchivosSincDto>();
         foreach (var entidad in entidadesCreadas)
         {
-            var resultado = await _repository.ObtenerPorIdCompletoAsync(entidad.FotoDealerProductosId);
+            var resultado = await _repository.ObtenerPorIdCompletoAsync(entidad.FotoDealersCargaArchivosSincId);
             if (resultado != null)
             {
                 dtos.Add(MapearADto(resultado));
@@ -200,16 +200,17 @@ public class FotoDealerProductosService : IFotoDealerProductosService
     /// <summary>
     /// Mapea un resultado completo del JOIN a su DTO correspondiente.
     /// </summary>
-    private static FotoDealerProductosDto MapearADto(FotoDealerProductosMap map)
+    private static FotoDealersCargaArchivosSincDto MapearADto(FotoDealersCargaArchivosSincMap map)
     {
-        return new FotoDealerProductosDto
+        return new FotoDealersCargaArchivosSincDto
         {
-            FotoDealerProductosId = map.FotoDealerProductosId,
+            FotoDealersCargaArchivosSincId = map.FotoDealersCargaArchivosSincId,
             CargaArchivoSincronizacionId = map.CargaArchivoSincronizacionId,
             IdCarga = map.IdCarga ?? string.Empty,
             ProcesoCarga = map.ProcesoCarga ?? string.Empty,
             FechaCarga = map.FechaCarga ?? DateTime.MinValue,
             FechaSincronizacion = map.FechaSincronizacion,
+            TokenConfirmacion = map.TokenConfirmacion,
             TiempoSincronizacionHoras = map.TiempoSincronizacionHoras,
             DealerBac = map.DealerBac,
             NombreDealer = map.NombreDealer,

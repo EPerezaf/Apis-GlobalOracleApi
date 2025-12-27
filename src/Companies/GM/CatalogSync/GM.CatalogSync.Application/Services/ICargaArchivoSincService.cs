@@ -40,7 +40,7 @@ public interface ICargaArchivoSincService
         string usuarioAlta);
 
     /// <summary>
-    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealerProductos.
+    /// Actualiza el valor de DealersTotales basado en el conteo de dealers únicos en FotoDealersCargaArchivosSinc.
     /// </summary>
     /// <param name="cargaArchivoSincronizacionId">ID del registro a actualizar</param>
     /// <param name="usuarioModificacion">Usuario que realiza la modificación</param>

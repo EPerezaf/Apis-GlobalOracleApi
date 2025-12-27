@@ -58,6 +58,11 @@ public class CargaArchivoSincDto
     public decimal? PorcDealersSinc { get; set; }
 
     /// <summary>
+    /// Nombre de la tabla relacionada.
+    /// </summary>
+    public string? TablaRelacion { get; set; }
+
+    /// <summary>
     /// Fecha de alta del registro.
     /// </summary>
     public DateTime FechaAlta { get; set; }
@@ -120,6 +125,12 @@ public class CrearCargaArchivoSincDto
     [Required(ErrorMessage = "El número de dealers totales es requerido")]
     [Range(0, int.MaxValue, ErrorMessage = "El número de dealers totales debe ser mayor o igual a 0")]
     public int DealersTotales { get; set; }
+
+    /// <summary>
+    /// Nombre de la tabla relacionada (opcional).
+    /// </summary>
+    [StringLength(400, ErrorMessage = "El nombre de la tabla relacionada no puede exceder 400 caracteres")]
+    public string? TablaRelacion { get; set; }
 }
 
 /// <summary>
