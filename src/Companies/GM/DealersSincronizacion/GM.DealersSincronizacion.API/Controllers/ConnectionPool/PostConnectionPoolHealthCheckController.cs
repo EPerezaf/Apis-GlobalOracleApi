@@ -13,7 +13,7 @@ namespace GM.DealersSincronizacion.API.Controllers.ConnectionPool;
 /// Controller para realizar health check manual del pool de conexiones
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/connection-pool")]
+[Route("api/v1/gm/dealer-sinc/connection-pool")]
 [Produces("application/json")]
 [Authorize]
 public class PostConnectionPoolHealthCheckController : ControllerBase
@@ -46,7 +46,7 @@ public class PostConnectionPoolHealthCheckController : ControllerBase
     /// - Retorna el estado de salud (Healthy/Unhealthy)
     /// 
     /// **Ejemplo de uso:**
-    /// - POST /api/v1/gm/dealer-sinc-productos/connection-pool/health-check
+    /// - POST /api/v1/gm/dealer-sinc/connection-pool/health-check
     /// 
     /// **Campos en la respuesta:**
     /// - `isHealthy`: Indica si la conexión está saludable (true si la consulta retornó 1)

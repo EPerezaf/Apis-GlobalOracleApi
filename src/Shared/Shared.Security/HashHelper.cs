@@ -39,24 +39,26 @@ public static class HashHelper
 
     /// <summary>
     /// Genera un token de confirmación para sincronización de archivos.
-    /// Hash SHA256 de: idCarga + dealerBac + fechaSincronizacion (ISO format) + registrosSincronizados
+    /// Hash SHA256 de: idCarga + dealerBac + proceso + fechaSincronizacion (ISO format) + registrosSincronizados
     /// </summary>
     /// <param name="idCarga">ID de la carga (COCA_IDCARGA)</param>
     /// <param name="dealerBac">Código BAC del dealer (COSA_DEALERBAC)</param>
+    /// <param name="proceso">Nombre del proceso de sincronización (COCA_PROCESO)</param>
     /// <param name="fechaSincronizacion">Fecha de sincronización</param>
     /// <param name="registrosSincronizados">Número de registros sincronizados</param>
     /// <returns>Token de confirmación (hash SHA256)</returns>
     public static string GenerateTokenConfirmacion(
         string idCarga,
         string dealerBac,
+        string proceso,
         DateTime fechaSincronizacion,
         int registrosSincronizados)
     {
         // Formatear fecha en formato ISO 8601 (sin milisegundos)
         var fechaIso = fechaSincronizacion.ToString("yyyy-MM-ddTHH:mm:ss");
 
-        // Generar hash con los valores especificados
-        return GenerateSha256Hash(idCarga, dealerBac, fechaIso, registrosSincronizados);
+        // Generar hash con los valores especificados (incluyendo proceso)
+        return GenerateSha256Hash(idCarga, dealerBac, proceso, fechaIso, registrosSincronizados);
     }
 }
 

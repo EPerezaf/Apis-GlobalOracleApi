@@ -71,11 +71,11 @@ builder.Services.AddSwaggerGen(c =>
     c.TagActionsBy(api =>
     {
         var path = api.RelativePath ?? "";
-        // Extraer el nombre del recurso del path: /api/v1/gm/dealer-sinc-productos/{recurso}
+        // Extraer el nombre del recurso del path: /api/v1/gm/dealer-sinc/{recurso}
         var segments = path.Split('/');
         if (segments.Length >= 5)
         {
-            // Convertir kebab-case a PascalCase: "dealer-sinc-productos" -> "DealerSincProductos"
+            // Convertir kebab-case a PascalCase: "dealer-sinc" -> "DealerSinc"
             var resource = segments[4].Split('-')
                 .Select(s => char.ToUpper(s[0]) + s.Substring(1).ToLower())
                 .Aggregate((a, b) => a + b);

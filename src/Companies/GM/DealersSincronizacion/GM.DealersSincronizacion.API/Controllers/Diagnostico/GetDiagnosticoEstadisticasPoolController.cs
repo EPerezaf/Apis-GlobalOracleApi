@@ -12,7 +12,7 @@ namespace GM.DealersSincronizacion.API.Controllers.Diagnostico;
 /// Controller para obtener estadísticas del pool de conexiones Oracle
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/diagnostico")]
+[Route("api/v1/gm/dealer-sinc/diagnostico")]
 [Produces("application/json")]
 [Authorize]
 public class GetDiagnosticoEstadisticasPoolController : ControllerBase
@@ -45,7 +45,7 @@ public class GetDiagnosticoEstadisticasPoolController : ControllerBase
     /// - Proporciona información de diagnóstico de la conexión
     /// 
     /// **Ejemplo de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/diagnostico/estadisticas-pool
+    /// - GET /api/v1/gm/dealer-sinc/diagnostico/estadisticas-pool
     /// 
     /// **Campos en la respuesta:**
     /// - `serverVersion`: Versión del servidor Oracle (ej: "21.0.0.0.0")

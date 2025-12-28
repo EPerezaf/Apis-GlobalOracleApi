@@ -13,7 +13,7 @@ namespace GM.DealersSincronizacion.API.Controllers.ConnectionPool;
 /// Controller para realizar warm-up manual del pool de conexiones
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/connection-pool")]
+[Route("api/v1/gm/dealer-sinc/connection-pool")]
 [Produces("application/json")]
 [Authorize]
 public class PostConnectionPoolWarmupController : ControllerBase
@@ -46,7 +46,7 @@ public class PostConnectionPoolWarmupController : ControllerBase
     /// - Mide el tiempo de respuesta de la consulta
     /// 
     /// **Ejemplo de uso:**
-    /// - POST /api/v1/gm/dealer-sinc-productos/connection-pool/warmup
+    /// - POST /api/v1/gm/dealer-sinc/connection-pool/warmup
     /// 
     /// **Campos en la respuesta:**
     /// - `success`: Indica si el warm-up fue exitoso (true si la consulta retornó 1)

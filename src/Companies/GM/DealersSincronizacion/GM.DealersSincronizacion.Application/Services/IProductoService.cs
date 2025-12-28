@@ -8,9 +8,9 @@ namespace GM.DealersSincronizacion.Application.Services;
 public interface IProductoService
 {
     /// <summary>
-    /// Obtiene todos los productos activos con paginación.
+    /// Obtiene todos los productos activos con paginación e información de carga de archivo de sincronización.
     /// </summary>
-    Task<(List<ProductoDto> data, int totalRecords)> ObtenerTodosAsync(
+    Task<(ProductosConCargaDto data, int totalRecords)> ObtenerTodosConCargaAsync(
         int page = 1,
         int pageSize = 200);
 }

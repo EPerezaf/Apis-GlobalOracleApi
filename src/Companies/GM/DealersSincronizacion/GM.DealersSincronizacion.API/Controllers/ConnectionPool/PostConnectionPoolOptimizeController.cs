@@ -10,7 +10,7 @@ namespace GM.DealersSincronizacion.API.Controllers.ConnectionPool;
 /// Controller para optimizar manualmente el pool de conexiones
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/connection-pool")]
+[Route("api/v1/gm/dealer-sinc/connection-pool")]
 [Produces("application/json")]
 [Authorize]
 public class PostConnectionPoolOptimizeController : ControllerBase
@@ -39,7 +39,7 @@ public class PostConnectionPoolOptimizeController : ControllerBase
     /// - Calcula la memoria liberada (antes vs después)
     /// 
     /// **Ejemplo de uso:**
-    /// - POST /api/v1/gm/dealer-sinc-productos/connection-pool/optimize
+    /// - POST /api/v1/gm/dealer-sinc/connection-pool/optimize
     /// 
     /// **Campos en la respuesta:**
     /// - `memoryBeforeMB`: Memoria utilizada antes de la optimización (MB)

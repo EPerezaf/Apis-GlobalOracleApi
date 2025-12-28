@@ -10,7 +10,7 @@ namespace GM.DealersSincronizacion.API.Controllers.Performance;
 /// Controller para optimizar la memoria de la aplicación
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/performance")]
+[Route("api/v1/gm/dealer-sinc/performance")]
 [Produces("application/json")]
 [Authorize]
 public class PostPerformanceOptimizeController : ControllerBase
@@ -38,7 +38,7 @@ public class PostPerformanceOptimizeController : ControllerBase
     /// - Calcula la memoria liberada (antes vs después)
     /// 
     /// **Ejemplo de uso:**
-    /// - POST /api/v1/gm/dealer-sinc-productos/performance/optimize
+    /// - POST /api/v1/gm/dealer-sinc/performance/optimize
     /// 
     /// **Campos en la respuesta:**
     /// - `memoryBeforeMB`: Memoria utilizada antes de la optimización (MB)

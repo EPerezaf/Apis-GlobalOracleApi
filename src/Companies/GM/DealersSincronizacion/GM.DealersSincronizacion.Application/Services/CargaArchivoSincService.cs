@@ -49,5 +49,35 @@ public class CargaArchivoSincService : ICargaArchivoSincService
         _logger.LogInformation("✅ [SERVICE] Registro actual obtenido exitosamente. ID: {Id}", dto.CargaArchivoSincronizacionId);
         return dto;
     }
+
+    /// <inheritdoc />
+    public async Task<CargaArchivoSincActualDto?> ObtenerActualPorProcesoAsync(string proceso)
+    {
+        _logger.LogInformation("🔷 [SERVICE] Obteniendo registro actual de carga de archivo de sincronización para proceso: {Proceso}", proceso);
+
+        var carga = await _repository.ObtenerActualPorProcesoAsync(proceso);
+
+        if (carga == null)
+        {
+            _logger.LogWarning("⚠️ [SERVICE] No se encontró registro actual de carga de archivo para proceso: {Proceso}", proceso);
+            return null;
+        }
+
+        var dto = new CargaArchivoSincActualDto
+        {
+            CargaArchivoSincronizacionId = carga.CargaArchivoSincronizacionId,
+            Proceso = carga.Proceso,
+            NombreArchivo = carga.NombreArchivo,
+            FechaCarga = carga.FechaCarga,
+            IdCarga = carga.IdCarga,
+            Registros = carga.Registros,
+            Actual = carga.Actual,
+            TablaRelacion = carga.TablaRelacion
+            // NOTA: DealersTotales, DealersSincronizados y PorcDealersSinc no se exponen a los dealers
+        };
+
+        _logger.LogInformation("✅ [SERVICE] Registro actual obtenido exitosamente para proceso {Proceso}. ID: {Id}", proceso, dto.CargaArchivoSincronizacionId);
+        return dto;
+    }
 }
 

@@ -11,7 +11,7 @@ namespace GM.DealersSincronizacion.API.Controllers.ConnectionPool;
 /// Controller para obtener estadísticas del pool de conexiones
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/connection-pool")]
+[Route("api/v1/gm/dealer-sinc/connection-pool")]
 [Produces("application/json")]
 [Authorize]
 public class GetConnectionPoolStatsController : ControllerBase
@@ -43,7 +43,7 @@ public class GetConnectionPoolStatsController : ControllerBase
     /// - Muestra tiempos de última ejecución de warm-up, health checks y optimizaciones
     /// 
     /// **Ejemplo de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/connection-pool/stats
+    /// - GET /api/v1/gm/dealer-sinc/connection-pool/stats
     /// 
     /// **Campos en la respuesta:**
     /// - `processId`: ID del proceso actual

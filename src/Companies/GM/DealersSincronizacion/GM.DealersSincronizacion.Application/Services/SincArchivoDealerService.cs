@@ -69,16 +69,17 @@ public class SincArchivoDealerService : ISincArchivoDealerService
         // Calcular fecha de sincronización
         var fechaSincronizacion = DateTimeHelper.GetMexicoDateTime();
 
-        // Generar token de confirmación: SHA256(idCarga + dealerBac + fechaSincronizacion + registrosSincronizados)
+        // Generar token de confirmación: SHA256(idCarga + dealerBac + proceso + fechaSincronizacion + registrosSincronizados)
         var tokenConfirmacion = HashHelper.GenerateTokenConfirmacion(
             carga.IdCarga,
             dealerBac,
+            carga.Proceso.Trim(),
             fechaSincronizacion,
             carga.Registros);
 
         _logger.LogInformation(
-            "🔐 [SERVICE] Token de confirmación generado. IdCarga: {IdCarga}, DealerBac: {DealerBac}, Token: {Token}",
-            carga.IdCarga, dealerBac, tokenConfirmacion);
+            "🔐 [SERVICE] Token de confirmación generado. IdCarga: {IdCarga}, DealerBac: {DealerBac}, Proceso: {Proceso}, Token: {Token}",
+            carga.IdCarga, dealerBac, carga.Proceso, tokenConfirmacion);
 
         // Crear entidad con datos del distribuidor y la carga
         // NOTA: proceso y registrosSincronizados se obtienen de la carga (CO_CARGAARCHIVOSINCRONIZACION)

@@ -13,7 +13,7 @@ namespace GM.DealersSincronizacion.API.Controllers.Diagnostico;
 /// Controller para validar la salud de la conexión Oracle
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/diagnostico")]
+[Route("api/v1/gm/dealer-sinc/diagnostico")]
 [Produces("application/json")]
 [Authorize]
 public class GetDiagnosticoValidarConexionController : ControllerBase
@@ -46,7 +46,7 @@ public class GetDiagnosticoValidarConexionController : ControllerBase
     /// - Retorna el estado de validación (válida o no válida)
     /// 
     /// **Ejemplo de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/diagnostico/validar-conexion
+    /// - GET /api/v1/gm/dealer-sinc/diagnostico/validar-conexion
     /// 
     /// **Campos en la respuesta:**
     /// - `isValid`: Indica si la conexión es válida (true si la consulta retornó 1)

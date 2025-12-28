@@ -12,7 +12,7 @@ namespace GM.DealersSincronizacion.API.Controllers;
 /// Controller para obtener productos activos.
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/productos")]
+[Route("api/v1/gm/dealer-sinc/productos")]
 [Authorize]
 public class GetProductosController : ControllerBase
 {
@@ -44,18 +44,28 @@ public class GetProductosController : ControllerBase
     /// - `pageSize`: Cantidad de registros por página (por defecto: 200, máximo recomendado: 200)
     /// 
     /// **Ejemplos de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/productos
-    /// - GET /api/v1/gm/dealer-sinc-productos/productos?page=1&amp;pageSize=200
-    /// - GET /api/v1/gm/dealer-sinc-productos/productos?page=2&amp;pageSize=100
+    /// - GET /api/v1/gm/dealer-sinc/productos
+    /// - GET /api/v1/gm/dealer-sinc/productos?page=1&amp;pageSize=200
+    /// - GET /api/v1/gm/dealer-sinc/productos?page=2&amp;pageSize=100
     /// 
     /// **Campos en la respuesta:**
-    /// - `productoId`: ID único del producto
-    /// - `codigo`: Código del producto
-    /// - `nombre`: Nombre del producto
-    /// - `descripcion`: Descripción del producto
-    /// - `precio`: Precio del producto
-    /// - `stock`: Stock disponible
-    /// - `activo`: Indica si el producto está activo
+    /// - `productos`: Lista de productos activos con los siguientes campos:
+    ///   - `productoId`: ID único del producto
+    ///   - `nombreProducto`: Nombre del producto
+    ///   - `pais`: País del producto
+    ///   - `nombreModelo`: Nombre del modelo
+    ///   - `anioModelo`: Año del modelo
+    ///   - `modeloInteres`: Modelo de interés
+    ///   - `marcaNegocio`: Marca de negocio
+    ///   - `nombreLocal`: Nombre local (opcional)
+    ///   - `definicionVehiculo`: Definición del vehículo (opcional)
+    /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización actual
+    /// - `proceso`: Nombre del proceso de sincronización (ej: "ProductList")
+    /// - `fechaCarga`: Fecha y hora de carga del archivo
+    /// - `idCarga`: ID único de la carga (ej: "catalogo_productos_27122025_1444")
+    /// - `registros`: Número de registros procesados en la carga
+    /// - `actual`: Indica si es la carga actual (siempre true en esta respuesta)
+    /// - `tablaRelacion`: Nombre de la tabla relacionada (ej: "CO_GM_LISTAPRODUCTOS")
     /// 
     /// **Validaciones:**
     /// - El usuario debe estar autenticado (JWT requerido)
@@ -75,7 +85,7 @@ public class GetProductosController : ControllerBase
     /// <response code="401">No autorizado si no se proporciona un token JWT válido.</response>
     /// <response code="500">Error interno del servidor.</response>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<List<ProductoDto>>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<ProductosConCargaDto>), 200)]
     [ProducesResponseType(typeof(ApiResponse), 401)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> ObtenerProductos(
@@ -92,19 +102,19 @@ public class GetProductosController : ControllerBase
 
         try
         {
-            var (data, totalRecords) = await _productoService.ObtenerTodosAsync(page, pageSize);
+            var (data, totalRecords) = await _productoService.ObtenerTodosConCargaAsync(page, pageSize);
 
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
             stopwatch.Stop();
             _logger.LogInformation(
                 "✅ [CONTROLLER] Productos obtenidos. DealerBac: {DealerBac}, Tiempo: {ElapsedMs}ms, Registros: {Count} de {Total}, Página: {Page} de {TotalPages}",
-                dealerBac, stopwatch.ElapsedMilliseconds, data.Count, totalRecords, page, totalPages);
+                dealerBac, stopwatch.ElapsedMilliseconds, data.Productos.Count, totalRecords, page, totalPages);
 
-            return Ok(new ApiResponse<List<ProductoDto>>
+            return Ok(new ApiResponse<ProductosConCargaDto>
             {
                 Success = true,
-                Message = data.Count > 0
+                Message = data.Productos.Count > 0
                     ? $"Registros obtenidos exitosamente (Página {page} de {totalPages})"
                     : "No se encontraron productos activos",
                 Data = data,

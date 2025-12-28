@@ -11,10 +11,10 @@ namespace GM.DealersSincronizacion.API.Controllers;
 
 /// <summary>
 /// Controller para crear registros de sincronización de archivos por dealer.
-/// Ruta base: /api/v1/gm/dealer-sinc-productos/sinc-archivos
+/// Ruta base: /api/v1/gm/dealer-sinc/confirmar-sinc
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/sinc-archivos")]
+[Route("api/v1/gm/dealer-sinc/confirmar-sinc")]
 [Produces("application/json")]
 [Authorize]
 public class CreateSincArchivosController : ControllerBase

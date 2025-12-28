@@ -11,7 +11,7 @@ namespace GM.DealersSincronizacion.API.Controllers.Performance;
 /// Controller para obtener estadísticas de rendimiento de la aplicación
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/performance")]
+[Route("api/v1/gm/dealer-sinc/performance")]
 [Produces("application/json")]
 [Authorize]
 public class GetPerformanceStatsController : ControllerBase
@@ -44,7 +44,7 @@ public class GetPerformanceStatsController : ControllerBase
     /// - Muestra información del sistema (máquina, procesadores, versión del SO, versión del framework)
     /// 
     /// **Ejemplo de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/performance/stats
+    /// - GET /api/v1/gm/dealer-sinc/performance/stats
     /// 
     /// **Campos en la respuesta:**
     /// - `processId`: ID del proceso actual

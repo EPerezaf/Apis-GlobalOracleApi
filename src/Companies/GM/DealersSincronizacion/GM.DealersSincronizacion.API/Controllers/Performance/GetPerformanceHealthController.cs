@@ -10,7 +10,7 @@ namespace GM.DealersSincronizacion.API.Controllers.Performance;
 /// Controller para health check básico de la aplicación
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/performance")]
+[Route("api/v1/gm/dealer-sinc/performance")]
 [Produces("application/json")]
 [Authorize]
 public class GetPerformanceHealthController : ControllerBase
@@ -39,7 +39,7 @@ public class GetPerformanceHealthController : ControllerBase
     /// - Mide el tiempo de respuesta de la petición
     /// 
     /// **Ejemplo de uso:**
-    /// - GET /api/v1/gm/dealer-sinc-productos/performance/health
+    /// - GET /api/v1/gm/dealer-sinc/performance/health
     /// 
     /// **Campos en la respuesta:**
     /// - `status`: Estado de salud de la aplicación (siempre "Healthy" si responde)

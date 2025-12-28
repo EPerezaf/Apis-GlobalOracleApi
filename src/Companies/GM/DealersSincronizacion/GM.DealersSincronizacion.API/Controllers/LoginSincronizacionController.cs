@@ -12,7 +12,7 @@ namespace GM.DealersSincronizacion.API.Controllers;
 /// Controller para autenticación de dealers.
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc-productos/login-sincronizacion")]
+[Route("api/v1/gm/dealer-sinc/login-sincronizacion")]
 public class LoginSincronizacionController : ControllerBase
 {
     private readonly IAuthService _authService;
