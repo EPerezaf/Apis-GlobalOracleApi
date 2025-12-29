@@ -186,11 +186,17 @@ public class SincArchivoDealerService : ISincArchivoDealerService
     private static SincArchivoDealerDto MapearADto(SincArchivoDealer entidad, CargaArchivoSincronizacion? carga = null, decimal? tiempoSincronizacionHoras = null)
     {
         // Usar el tiempo calculado en SQL si está disponible, sino calcularlo
-        decimal tiempoHoras = tiempoSincronizacionHoras ?? 0;
-        if (tiempoHoras == 0 && carga != null && carga.FechaCarga != DateTime.MinValue && entidad.FechaSincronizacion != DateTime.MinValue)
+        // Siempre redondear a 2 decimales para mayor precisión
+        decimal tiempoHoras = 0.00m;
+        if (tiempoSincronizacionHoras.HasValue)
+        {
+            // Si viene de SQL, redondear nuevamente para asegurar 2 decimales
+            tiempoHoras = Math.Round(tiempoSincronizacionHoras.Value, 2, MidpointRounding.AwayFromZero);
+        }
+        else if (carga != null && carga.FechaCarga != DateTime.MinValue && entidad.FechaSincronizacion != DateTime.MinValue)
         {
             var diferencia = entidad.FechaSincronizacion - carga.FechaCarga;
-            tiempoHoras = Math.Round((decimal)diferencia.TotalHours, 2);
+            tiempoHoras = Math.Round((decimal)diferencia.TotalHours, 2, MidpointRounding.AwayFromZero);
         }
 
         return new SincArchivoDealerDto

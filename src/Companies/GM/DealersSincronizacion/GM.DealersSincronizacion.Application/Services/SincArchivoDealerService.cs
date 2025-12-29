@@ -99,11 +99,12 @@ public class SincArchivoDealerService : ISincArchivoDealerService
         var resultado = await _repository.CrearAsync(entidad, usuarioAlta);
 
         // Calcular tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga)
-        var tiempoSincronizacionHoras = 0m;
+        // Siempre redondear a 2 decimales para mayor precisión
+        var tiempoSincronizacionHoras = 0.00m;
         if (carga.FechaCarga != DateTime.MinValue && resultado.FechaSincronizacion != DateTime.MinValue)
         {
             var diferencia = resultado.FechaSincronizacion - carga.FechaCarga;
-            tiempoSincronizacionHoras = Math.Round((decimal)diferencia.TotalHours, 2);
+            tiempoSincronizacionHoras = Math.Round((decimal)diferencia.TotalHours, 2, MidpointRounding.AwayFromZero);
         }
 
         var resultadoDto = new SincArchivoDealerDto

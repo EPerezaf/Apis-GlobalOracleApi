@@ -211,7 +211,10 @@ public class FotoDealersCargaArchivosSincService : IFotoDealersCargaArchivosSinc
             FechaCarga = map.FechaCarga ?? DateTime.MinValue,
             FechaSincronizacion = map.FechaSincronizacion,
             TokenConfirmacion = map.TokenConfirmacion,
-            TiempoSincronizacionHoras = map.TiempoSincronizacionHoras,
+            // Redondear a 2 decimales para mayor precisión
+            TiempoSincronizacionHoras = map.TiempoSincronizacionHoras.HasValue 
+                ? Math.Round(map.TiempoSincronizacionHoras.Value, 2, MidpointRounding.AwayFromZero) 
+                : null,
             DealerBac = map.DealerBac,
             NombreDealer = map.NombreDealer,
             RazonSocialDealer = map.RazonSocialDealer,
