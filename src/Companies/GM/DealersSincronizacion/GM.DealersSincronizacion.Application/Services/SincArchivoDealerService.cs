@@ -98,6 +98,14 @@ public class SincArchivoDealerService : ISincArchivoDealerService
         // Guardar en repositorio
         var resultado = await _repository.CrearAsync(entidad, usuarioAlta);
 
+        // Calcular tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga)
+        var tiempoSincronizacionHoras = 0m;
+        if (carga.FechaCarga != DateTime.MinValue && resultado.FechaSincronizacion != DateTime.MinValue)
+        {
+            var diferencia = resultado.FechaSincronizacion - carga.FechaCarga;
+            tiempoSincronizacionHoras = Math.Round((decimal)diferencia.TotalHours, 2);
+        }
+
         var resultadoDto = new SincArchivoDealerDto
         {
             SincArchivoDealerId = resultado.SincArchivoDealerId,
@@ -108,10 +116,12 @@ public class SincArchivoDealerService : ISincArchivoDealerService
             NombreDealer = resultado.NombreDealer,
             FechaSincronizacion = resultado.FechaSincronizacion,
             RegistrosSincronizados = resultado.RegistrosSincronizados,
-            TokenConfirmacion = resultado.TokenConfirmacion
+            TokenConfirmacion = resultado.TokenConfirmacion,
+            TiempoSincronizacionHoras = tiempoSincronizacionHoras
         };
 
-        _logger.LogInformation("✅ [SERVICE] Registro de sincronización creado exitosamente. ID: {Id}", resultadoDto.SincArchivoDealerId);
+        _logger.LogInformation("✅ [SERVICE] Registro de sincronización creado exitosamente. ID: {Id}, TiempoSincronizacion: {TiempoHoras} horas", 
+            resultadoDto.SincArchivoDealerId, tiempoSincronizacionHoras);
         return resultadoDto;
     }
 }

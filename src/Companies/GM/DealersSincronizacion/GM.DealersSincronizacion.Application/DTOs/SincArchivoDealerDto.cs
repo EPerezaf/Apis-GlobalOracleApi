@@ -41,6 +41,10 @@ public class SincArchivoDealerDto
     public DateTime FechaSincronizacion { get; set; }
     public int RegistrosSincronizados { get; set; }
     public string TokenConfirmacion { get; set; } = string.Empty;
+    /// <summary>
+    /// Tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga).
+    /// </summary>
+    public decimal TiempoSincronizacionHoras { get; set; }
 }
 
 

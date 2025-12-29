@@ -93,6 +93,7 @@ public class CreateSincArchivosController : ControllerBase
     /// - Registro de sincronización creado con todos sus campos
     /// - ID generado automáticamente
     /// - Token de confirmación (hash SHA256) generado automáticamente
+    /// - Tiempo de sincronización en horas (diferencia entre FechaSincronizacion y FechaCarga)
     /// - Timestamp de la operación
     /// - Datos del dealer consultados de `CO_DISTRIBUIDORES` (dmsOrigen, nombreDealer)
     /// </remarks>
