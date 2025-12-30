@@ -75,8 +75,16 @@ builder.Services.AddSwaggerGen(c =>
         var segments = path.Split('/');
         if (segments.Length >= 5)
         {
+            var resourcePath = segments[4];
+            
+            // Caso especial: agrupar todos los endpoints de "product-list" bajo "ProductList"
+            if (resourcePath.StartsWith("product-list"))
+            {
+                return new[] { "ProductList" };
+            }
+            
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
-            var resource = segments[4].Split('-')
+            var resource = resourcePath.Split('-')
                 .Select(s => char.ToUpper(s[0]) + s.Substring(1).ToLower())
                 .Aggregate((a, b) => a + b);
             return new[] { resource };

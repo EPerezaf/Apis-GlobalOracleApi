@@ -14,9 +14,10 @@ namespace GM.CatalogSync.API.Controllers.Productos;
 /// Controller para operaciones GET de productos
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/catalog-sync/productos")]
+[Route("api/v1/gm/catalog-sync/product-list")]
 [Produces("application/json")]
 [Authorize]
+[Tags("ProductList")]
 public class GetProductosController : ControllerBase
 {
     private readonly IProductoService _service;
@@ -44,10 +45,10 @@ public class GetProductosController : ControllerBase
     /// - `pageSize`: Tamaño de página (por defecto: 200)
     /// 
     /// **Ejemplos de uso:**
-    /// - GET /api/v1/gm/catalog-sync/productos
-    /// - GET /api/v1/gm/catalog-sync/productos?pais=Mexico
-    /// - GET /api/v1/gm/catalog-sync/productos?pais=Mexico&amp;marcaNegocio=Chevrolet&amp;anioModelo=2025
-    /// - GET /api/v1/gm/catalog-sync/productos?page=1&amp;pageSize=50
+    /// - GET /api/v1/gm/catalog-sync/product-list
+    /// - GET /api/v1/gm/catalog-sync/product-list?pais=Mexico
+    /// - GET /api/v1/gm/catalog-sync/product-list?pais=Mexico&amp;marcaNegocio=Chevrolet&amp;anioModelo=2025
+    /// - GET /api/v1/gm/catalog-sync/product-list?page=1&amp;pageSize=50
     /// 
     /// **Respuesta exitosa incluye:**
     /// - Lista de productos que coinciden con los filtros

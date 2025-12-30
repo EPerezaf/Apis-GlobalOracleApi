@@ -13,9 +13,10 @@ namespace GM.CatalogSync.API.Controllers.Productos;
 /// Controller para operaciones POST de productos
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/catalog-sync/productos")]
+[Route("api/v1/gm/catalog-sync/product-list-batch-insert")]
 [Produces("application/json")]
 [Authorize]
+[Tags("ProductList")]
 public class CreateProductosController : ControllerBase
 {
     private readonly IProductoService _service;

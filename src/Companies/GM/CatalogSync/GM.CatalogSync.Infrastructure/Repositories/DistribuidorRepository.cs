@@ -71,5 +71,76 @@ public class DistribuidorRepository : IDistribuidorRepository
             throw new DataAccessException("Error al acceder a la base de datos", ex);
         }
     }
+
+    /// <inheritdoc />
+    public async Task<List<Distribuidor>> ObtenerTodosAsync(int? empresaId = null, string? usuario = null)
+    {
+        var sql = @"
+            SELECT 
+                DEALERID as DealerId,
+                DEALERID as DealerBac,
+                CODI_NOMBRE as Nombre,
+                CODI_RAZONSOCIAL as RazonSocial,
+                CODI_RFC as Rfc,
+                CODI_ZONA as Zona,
+                CODI_SITECODE as SiteCode,
+                CODI_DMS as Dms,
+                CODI_NOMBRE as NombreDealer,
+                CODI_MARCA as Marca
+            FROM CO_DISTRIBUIDORES
+            WHERE 1=1";
+
+        var parameters = new DynamicParameters();
+
+        // Filtro por empresa si se proporciona
+        if (empresaId.HasValue)
+        {
+            sql += " AND EMPR_EMPRESAID = :EmpresaId";
+            parameters.Add("EmpresaId", empresaId.Value);
+        }
+
+        // Filtro por usuario si se proporciona (solo distribuidores asociados al usuario)
+        if (!string.IsNullOrWhiteSpace(usuario))
+        {
+            sql += @" AND DEALERID IN (
+                SELECT COUD_DEALER 
+                FROM CO_USUARIOXDEALER 
+                WHERE COUD_USUARIO = :Usuario";
+            
+            if (empresaId.HasValue)
+            {
+                sql += " AND EMPR_EMPRESAID = :EmpresaId";
+            }
+            
+            sql += ")";
+            parameters.Add("Usuario", usuario.Trim());
+        }
+
+        sql += " ORDER BY DEALERID, CODI_NOMBRE";
+
+        try
+        {
+            _logger.LogInformation(
+                "🗄️ [REPOSITORY] Obteniendo todos los distribuidores. EmpresaId: {EmpresaId}, Usuario: {Usuario}",
+                empresaId?.ToString() ?? "Todos", usuario ?? "Todos");
+
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+
+            var resultados = await connection.QueryAsync<Distribuidor>(sql, parameters);
+            var lista = resultados.ToList();
+
+            _logger.LogInformation(
+                "✅ [REPOSITORY] Se obtuvieron {Cantidad} distribuidores",
+                lista.Count);
+
+            return lista;
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "❌ [REPOSITORY] Error Oracle en {Method}. ErrorCode: {ErrorCode}",
+                nameof(ObtenerTodosAsync), ex.Number);
+            throw new DataAccessException("Error al acceder a la base de datos", ex);
+        }
+    }
 }
 

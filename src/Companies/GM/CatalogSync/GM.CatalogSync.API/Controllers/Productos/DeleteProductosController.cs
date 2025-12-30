@@ -12,9 +12,10 @@ namespace GM.CatalogSync.API.Controllers.Productos;
 /// Controller para operaciones DELETE de productos
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/catalog-sync/productos")]
+[Route("api/v1/gm/catalog-sync/product-list-batch-delete")]
 [Produces("application/json")]
 [Authorize]
+[Tags("ProductList")]
 public class DeleteProductosController : ControllerBase
 {
     private readonly IProductoService _service;
@@ -35,7 +36,7 @@ public class DeleteProductosController : ControllerBase
     /// ⚠️ **ADVERTENCIA:** Este endpoint elimina TODOS los registros de la tabla.
     /// 
     /// **Ejemplo de uso:**
-    /// - DELETE /api/v1/gm/catalog-sync/productos
+    /// - DELETE /api/v1/gm/catalog-sync/product-list-batch-delete
     /// 
     /// **Características técnicas:**
     /// - ✅ Dapper.ExecuteAsync para DELETE

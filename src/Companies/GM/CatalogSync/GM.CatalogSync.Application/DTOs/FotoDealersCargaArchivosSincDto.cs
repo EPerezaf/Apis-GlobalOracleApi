@@ -96,8 +96,11 @@ public class FotoDealersCargaArchivosSincDto
 }
 
 /// <summary>
-/// DTO para creación de Foto de Dealers Carga Archivos Sincronización (para batch insert).
+/// DTO para creación de Foto de Dealers Carga Archivos Sincronización.
+/// NOTA: Este DTO ya no se usa directamente en el request. Los distribuidores se generan automáticamente desde CO_DISTRIBUIDORES.
+/// Se mantiene para compatibilidad interna del servicio.
 /// </summary>
+[Obsolete("Este DTO ya no se usa en el request. Los distribuidores se generan automáticamente desde CO_DISTRIBUIDORES.")]
 public class CrearFotoDealersCargaArchivosSincDto
 {
     /// <summary>
@@ -140,15 +143,23 @@ public class CrearFotoDealersCargaArchivosSincDto
 
 /// <summary>
 /// DTO para carga batch de Fotos de Dealers Carga Archivos Sincronización.
+/// Los distribuidores se generan automáticamente desde CO_DISTRIBUIDORES basándose en el empresaId del JWT.
 /// </summary>
 public class CrearFotoDealersCargaArchivosSincBatchDto
 {
     /// <summary>
-    /// Lista de registros a crear (formato JSON).
+    /// Identificador de la carga de archivo de sincronización (FK).
+    /// Los distribuidores se obtendrán automáticamente desde CO_DISTRIBUIDORES filtrados por empresaId del JWT.
     /// </summary>
-    [Required(ErrorMessage = "El campo 'json' es requerido")]
-    [MinLength(1, ErrorMessage = "Debe incluir al menos un registro en 'json'")]
-    [JsonPropertyName("json")]
-    public List<CrearFotoDealersCargaArchivosSincDto> Json { get; set; } = new();
+    [Required(ErrorMessage = "El ID de carga de archivo de sincronización es requerido")]
+    [Range(1, int.MaxValue, ErrorMessage = "El ID de carga debe ser mayor a 0")]
+    public int CargaArchivoSincronizacionId { get; set; }
+
+    // NOTA: Los siguientes campos se obtienen automáticamente desde CO_DISTRIBUIDORES:
+    // - dealerBac: DEALERID
+    // - nombreDealer: CODI_NOMBRE
+    // - razonSocialDealer: CODI_RAZONSOCIAL
+    // - dms: CODI_DMS (con default "GDMS" si está vacío)
+    // - fechaRegistro: Se calcula automáticamente con hora de México
 }
 

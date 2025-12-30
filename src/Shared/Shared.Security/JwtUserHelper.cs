@@ -81,6 +81,40 @@ namespace Shared.Security
             logger?.LogDebug("🏪 DealerBac obtenido: {DealerBac}", dealerBac);
             return dealerBac;
         }
+
+        /// <summary>
+        /// Obtiene el EmpresaId del usuario autenticado desde el JWT token
+        /// </summary>
+        /// <param name="user">ClaimsPrincipal del contexto HTTP</param>
+        /// <param name="logger">Logger opcional para registrar información</param>
+        /// <returns>EmpresaId del usuario, o null si no está disponible</returns>
+        public static int? GetEmpresaId(ClaimsPrincipal? user, ILogger? logger = null)
+        {
+            if (user == null || user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                logger?.LogWarning("⚠️ Usuario no autenticado - no se puede obtener EmpresaId");
+                return null;
+            }
+
+            // Intentar obtener empresaId del claim "EMPRESAID" o "EMPR_EMPRESAID"
+            var empresaIdStr = user.FindFirst("EMPRESAID")?.Value
+                ?? user.FindFirst("EMPR_EMPRESAID")?.Value;
+
+            if (string.IsNullOrWhiteSpace(empresaIdStr))
+            {
+                logger?.LogDebug("⚠️ EmpresaId no encontrado en el token");
+                return null;
+            }
+
+            if (int.TryParse(empresaIdStr, out var empresaId))
+            {
+                logger?.LogDebug("🏢 EmpresaId obtenido: {EmpresaId}", empresaId);
+                return empresaId;
+            }
+
+            logger?.LogWarning("⚠️ EmpresaId no es un número válido: {EmpresaIdStr}", empresaIdStr);
+            return null;
+        }
     }
 }
 

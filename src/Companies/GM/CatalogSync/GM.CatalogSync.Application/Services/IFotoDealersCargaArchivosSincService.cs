@@ -31,13 +31,17 @@ public interface IFotoDealersCargaArchivosSincService
         int pageSize = 200);
 
     /// <summary>
-    /// Crea múltiples registros en batch.
+    /// Crea múltiples registros en batch generando automáticamente los distribuidores desde CO_DISTRIBUIDORES.
     /// </summary>
-    /// <param name="dto">DTO con la lista de registros a crear</param>
+    /// <param name="dto">DTO con el cargaArchivoSincronizacionId (los distribuidores se generan automáticamente)</param>
     /// <param name="usuarioAlta">Usuario que realiza la operación</param>
+    /// <param name="empresaId">ID de la empresa del usuario autenticado (para filtrar distribuidores)</param>
+    /// <param name="usuario">Usuario autenticado (para filtrar distribuidores por CO_USUARIOXDEALER)</param>
     /// <returns>Lista de registros creados</returns>
     Task<List<FotoDealersCargaArchivosSincDto>> CrearBatchAsync(
         CrearFotoDealersCargaArchivosSincBatchDto dto,
-        string usuarioAlta);
+        string usuarioAlta,
+        int? empresaId = null,
+        string? usuario = null);
 }
 

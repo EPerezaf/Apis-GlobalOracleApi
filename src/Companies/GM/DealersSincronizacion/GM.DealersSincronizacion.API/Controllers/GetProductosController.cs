@@ -12,7 +12,7 @@ namespace GM.DealersSincronizacion.API.Controllers;
 /// Controller para obtener productos activos.
 /// </summary>
 [ApiController]
-[Route("api/v1/gm/dealer-sinc/productos")]
+[Route("api/v1/gm/dealer-sinc/product-list")]
 [Authorize]
 public class GetProductosController : ControllerBase
 {
@@ -44,9 +44,9 @@ public class GetProductosController : ControllerBase
     /// - `pageSize`: Cantidad de registros por página (por defecto: 200, máximo recomendado: 200)
     /// 
     /// **Ejemplos de uso:**
-    /// - GET /api/v1/gm/dealer-sinc/productos
-    /// - GET /api/v1/gm/dealer-sinc/productos?page=1&amp;pageSize=200
-    /// - GET /api/v1/gm/dealer-sinc/productos?page=2&amp;pageSize=100
+    /// - GET /api/v1/gm/dealer-sinc/product-list
+    /// - GET /api/v1/gm/dealer-sinc/product-list?page=1&amp;pageSize=200
+    /// - GET /api/v1/gm/dealer-sinc/product-list?page=2&amp;pageSize=100
     /// 
     /// **Campos en la respuesta:**
     /// - `productos`: Lista de productos activos con los siguientes campos:

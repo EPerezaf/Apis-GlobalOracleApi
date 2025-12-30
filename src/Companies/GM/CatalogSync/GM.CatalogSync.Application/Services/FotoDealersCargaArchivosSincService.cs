@@ -15,13 +15,16 @@ namespace GM.CatalogSync.Application.Services;
 public class FotoDealersCargaArchivosSincService : IFotoDealersCargaArchivosSincService
 {
     private readonly IFotoDealersCargaArchivosSincRepository _repository;
+    private readonly IDistribuidorRepository _distribuidorRepository;
     private readonly ILogger<FotoDealersCargaArchivosSincService> _logger;
 
     public FotoDealersCargaArchivosSincService(
         IFotoDealersCargaArchivosSincRepository repository,
+        IDistribuidorRepository distribuidorRepository,
         ILogger<FotoDealersCargaArchivosSincService> logger)
     {
         _repository = repository;
+        _distribuidorRepository = distribuidorRepository;
         _logger = logger;
     }
 
@@ -79,109 +82,116 @@ public class FotoDealersCargaArchivosSincService : IFotoDealersCargaArchivosSinc
     /// <inheritdoc />
     public async Task<List<FotoDealersCargaArchivosSincDto>> CrearBatchAsync(
         CrearFotoDealersCargaArchivosSincBatchDto dto,
-        string usuarioAlta)
+        string usuarioAlta,
+        int? empresaId = null,
+        string? usuario = null)
     {
         _logger.LogInformation(
-            "🔷 [SERVICE] Iniciando creación batch de {Cantidad} registros. Usuario: {Usuario}",
-            dto.Json.Count, usuarioAlta);
+            "🔷 [SERVICE] Iniciando creación batch automática de registros. CargaArchivoSincId: {CargaId}, EmpresaId: {EmpresaId}, Usuario: {Usuario}",
+            dto.CargaArchivoSincronizacionId, empresaId?.ToString() ?? "Todos", usuario ?? "Todos");
 
-        if (dto.Json == null || !dto.Json.Any())
+        // VALIDACIÓN: Verificar que existe el CargaArchivoSincronizacionId
+        var existeCarga = await _repository.ExisteCargaArchivoSincronizacionIdAsync(dto.CargaArchivoSincronizacionId);
+        if (!existeCarga)
         {
-            _logger.LogWarning("⚠️ [SERVICE] La lista de registros está vacía. Usuario: {Usuario}", usuarioAlta);
-            throw new BusinessValidationException("El campo 'json' no puede estar vacío", new List<ValidationError>());
+            _logger.LogWarning("⚠️ [SERVICE] No existe un registro de carga de archivo de sincronización con ID {CargaId}. Usuario: {Usuario}",
+                dto.CargaArchivoSincronizacionId, usuarioAlta);
+            throw new BusinessValidationException(
+                $"No existe un registro de carga de archivo de sincronización con ID {dto.CargaArchivoSincronizacionId}",
+                new List<ValidationError>
+                {
+                    new ValidationError
+                    {
+                        Field = "cargaArchivoSincronizacionId",
+                        Message = $"No existe un registro de carga de archivo de sincronización con ID {dto.CargaArchivoSincronizacionId}",
+                        AttemptedValue = dto.CargaArchivoSincronizacionId
+                    }
+                });
         }
 
-        // Mapear DTOs a entidades
-        var fechaRegistro = DateTimeHelper.GetMexicoDateTime(); // FechaRegistro se calcula automáticamente
-        var entidades = dto.Json.Select(dtoItem => new FotoDealersCargaArchivosSinc
+        // Obtener todos los distribuidores desde CO_DISTRIBUIDORES
+        _logger.LogInformation(
+            "🔷 [SERVICE] Consultando distribuidores desde CO_DISTRIBUIDORES. EmpresaId: {EmpresaId}, Usuario: {Usuario}",
+            empresaId?.ToString() ?? "Todos", usuario ?? "Todos");
+
+        var distribuidores = await _distribuidorRepository.ObtenerTodosAsync(empresaId, usuario);
+
+        if (distribuidores == null || !distribuidores.Any())
         {
-            CargaArchivoSincronizacionId = dtoItem.CargaArchivoSincronizacionId,
-            DealerBac = dtoItem.DealerBac,
-            NombreDealer = dtoItem.NombreDealer,
-            RazonSocialDealer = dtoItem.RazonSocialDealer,
-            Dms = dtoItem.Dms,
-            FechaRegistro = fechaRegistro, // Calculado automáticamente (hora de México)
+            _logger.LogWarning("⚠️ [SERVICE] No se encontraron distribuidores. EmpresaId: {EmpresaId}, Usuario: {Usuario}",
+                empresaId?.ToString() ?? "Todos", usuario ?? "Todos");
+            throw new BusinessValidationException(
+                "No se encontraron distribuidores para generar los registros",
+                new List<ValidationError>());
+        }
+
+        _logger.LogInformation(
+            "✅ [SERVICE] Se encontraron {Cantidad} distribuidores. Generando registros automáticamente...",
+            distribuidores.Count);
+
+        // Generar entidades automáticamente para cada distribuidor
+        var fechaRegistro = DateTimeHelper.GetMexicoDateTime();
+        var entidades = distribuidores.Select(distribuidor => new FotoDealersCargaArchivosSinc
+        {
+            CargaArchivoSincronizacionId = dto.CargaArchivoSincronizacionId,
+            DealerBac = distribuidor.DealerBac,
+            NombreDealer = distribuidor.NombreDealer ?? distribuidor.Nombre,
+            RazonSocialDealer = distribuidor.RazonSocial,
+            Dms = string.IsNullOrWhiteSpace(distribuidor.Dms) ? "GDMS" : distribuidor.Dms, // Default "GDMS" si está vacío
+            FechaRegistro = fechaRegistro,
             FechaAlta = DateTimeHelper.GetMexicoDateTime(),
             UsuarioAlta = usuarioAlta
         }).ToList();
 
-        // VALIDACIÓN PREVIA: Verificar duplicados dentro del mismo batch
-        var duplicadosEnBatch = entidades
-            .GroupBy(e => new { e.CargaArchivoSincronizacionId, e.DealerBac })
-            .Where(g => g.Count() > 1)
-            .Select(g => $"CargaArchivoSincId={g.Key.CargaArchivoSincronizacionId}, DealerBac={g.Key.DealerBac} (aparece {g.Count()} veces)")
-            .ToList();
-
-        if (duplicadosEnBatch.Any())
-        {
-            var mensaje = $"Se encontraron duplicados dentro del mismo batch: {string.Join("; ", duplicadosEnBatch)}";
-            _logger.LogWarning("⚠️ [SERVICE] {Mensaje}. Usuario: {Usuario}", mensaje, usuarioAlta);
-            throw new BusinessValidationException(mensaje, new List<ValidationError>());
-        }
-
-        // VALIDACIÓN PREVIA: Verificar que los CargaArchivoSincronizacionId existan
-        var errores = new List<ValidationError>();
-        var cargaArchivoSincIdsUnicos = entidades.Select(e => e.CargaArchivoSincronizacionId).Distinct().ToList();
-        
-        foreach (var cargaArchivoSincId in cargaArchivoSincIdsUnicos)
-        {
-            var existeCarga = await _repository.ExisteCargaArchivoSincronizacionIdAsync(cargaArchivoSincId);
-            if (!existeCarga)
-            {
-                var indices = entidades
-                    .Select((e, idx) => new { e, idx })
-                    .Where(x => x.e.CargaArchivoSincronizacionId == cargaArchivoSincId)
-                    .Select(x => x.idx)
-                    .ToList();
-
-                foreach (var indice in indices)
-                {
-                    errores.Add(new ValidationError
-                    {
-                        Field = $"json[{indice}].cargaArchivoSincronizacionId",
-                        Message = $"No existe un registro de carga de archivo de sincronización con ID {cargaArchivoSincId}",
-                        AttemptedValue = cargaArchivoSincId
-                    });
-                }
-            }
-        }
+        _logger.LogInformation(
+            "✅ [SERVICE] Se generaron {Cantidad} registros automáticamente desde {CantidadDistribuidores} distribuidores",
+            entidades.Count, distribuidores.Count);
 
         // VALIDACIÓN PREVIA: Verificar duplicados en la base de datos (ANTES de insertar)
-        for (int i = 0; i < entidades.Count; i++)
+        var errores = new List<ValidationError>();
+        var registrosExistentes = 0;
+        var entidadesNuevas = new List<FotoDealersCargaArchivosSinc>();
+
+        foreach (var entidad in entidades)
         {
-            var entidad = entidades[i];
             var existe = await _repository.ExisteCombinacionAsync(
                 entidad.CargaArchivoSincronizacionId,
                 entidad.DealerBac);
 
             if (existe)
             {
-                errores.Add(new ValidationError
-                {
-                    Field = $"json[{i}].(cargaArchivoSincronizacionId, dealerBac)",
-                    Message = $"Ya existe un registro con CargaArchivoSincId={entidad.CargaArchivoSincronizacionId} y DealerBac={entidad.DealerBac}",
-                    AttemptedValue = new { entidad.CargaArchivoSincronizacionId, entidad.DealerBac }
-                });
+                registrosExistentes++;
+                // No agregar error, solo registrar que ya existe (se omitirá en el insert)
+                _logger.LogDebug(
+                    "⚠️ [SERVICE] Ya existe registro para CargaArchivoSincId={CargaId} y DealerBac={DealerBac}. Se omitirá.",
+                    entidad.CargaArchivoSincronizacionId, entidad.DealerBac);
+            }
+            else
+            {
+                entidadesNuevas.Add(entidad);
             }
         }
 
-        if (errores.Any())
+        if (!entidadesNuevas.Any())
         {
-            var mensaje = $"Se encontraron {errores.Count} error(es) de validación. No se insertó ningún registro.";
-            _logger.LogWarning("⚠️ [SERVICE] {Mensaje}. Usuario: {Usuario}", mensaje, usuarioAlta);
-            throw new BusinessValidationException(mensaje, errores);
+            _logger.LogWarning(
+                "⚠️ [SERVICE] Todos los registros ya existen en la base de datos. No se insertará ningún registro nuevo. Usuario: {Usuario}",
+                usuarioAlta);
+            throw new BusinessValidationException(
+                $"Todos los {entidades.Count} distribuidores ya tienen un registro para esta carga de archivo. No se insertó ningún registro nuevo.",
+                new List<ValidationError>());
         }
 
+        _logger.LogInformation(
+            "✅ [SERVICE] De {Total} distribuidores, {Nuevos} son nuevos y {Existentes} ya existen. Se insertarán {Nuevos} registros.",
+            entidades.Count, entidadesNuevas.Count, registrosExistentes, entidadesNuevas.Count);
+
         // Si todas las validaciones pasan, proceder con el batch insert
-        _logger.LogInformation(
-            "✅ [SERVICE] Todas las validaciones pasaron. Procediendo con batch insert de {Cantidad} registros",
-            entidades.Count);
-
-        var entidadesCreadas = await _repository.CrearBatchAsync(entidades, usuarioAlta);
+        var entidadesCreadas = await _repository.CrearBatchAsync(entidadesNuevas, usuarioAlta);
 
         _logger.LogInformation(
-            "✅ [SERVICE] Batch insert completado exitosamente. {Cantidad} registros creados. Usuario: {Usuario}",
-            entidadesCreadas.Count, usuarioAlta);
+            "✅ [SERVICE] Batch insert completado exitosamente. {Cantidad} registros creados de {Total} distribuidores. Usuario: {Usuario}",
+            entidadesCreadas.Count, distribuidores.Count, usuarioAlta);
 
         // Para los registros creados, obtener datos completos con JOIN
         var dtos = new List<FotoDealersCargaArchivosSincDto>();
