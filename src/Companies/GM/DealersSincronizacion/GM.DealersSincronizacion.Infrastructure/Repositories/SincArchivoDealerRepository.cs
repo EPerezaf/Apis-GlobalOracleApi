@@ -133,8 +133,8 @@ public class SincArchivoDealerRepository : ISincArchivoDealerRepository
                 COCA_DEALERSSONCRONIZADOS = :DealersSincronizados,
                 COCA_PORCDEALERSSINC = CASE 
                     WHEN COCA_DEALERSTOTALES > 0 
-                    THEN (COCA_DEALERSSONCRONIZADOS * 100.0 / COCA_DEALERSTOTALES)
-                    ELSE 0 
+                    THEN ROUND((COCA_DEALERSSONCRONIZADOS * 100.0 / COCA_DEALERSTOTALES), 2)
+                    ELSE 0.00 
                 END,
                 FECHAMODIFICACION = :FechaModificacion,
                 USUARIOMODIFICACION = :UsuarioModificacion
