@@ -254,18 +254,18 @@ builder.Services.AddScoped<IOracleConnectionFactory>(sp =>
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
 
-// Carga de Archivos de Sincronización
-builder.Services.AddScoped<ICargaArchivoSincRepository, CargaArchivoSincRepository>();
-builder.Services.AddScoped<ICargaArchivoSincService, CargaArchivoSincService>();
+// Evento de Carga de Proceso
+builder.Services.AddScoped<IEventoCargaProcesoRepository, EventoCargaProcesoRepository>();
+builder.Services.AddScoped<IEventoCargaProcesoService, EventoCargaProcesoService>();
 
-// Sincronización de Archivos por Dealer
-builder.Services.AddScoped<ISincArchivoDealerRepository, SincArchivoDealerRepository>();
-builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
+// Sincronización de Carga de Proceso por Dealer
+builder.Services.AddScoped<ISincCargaProcesoDealerRepository, SincCargaProcesoDealerRepository>();
+builder.Services.AddScoped<ISincCargaProcesoDealerService, SincCargaProcesoDealerService>();
 builder.Services.AddScoped<IDistribuidorRepository, DistribuidorRepository>();
 
-// Foto de Dealers Carga Archivos Sincronización
-builder.Services.AddScoped<IFotoDealersCargaArchivosSincRepository, FotoDealersCargaArchivosSincRepository>();
-builder.Services.AddScoped<IFotoDealersCargaArchivosSincService, FotoDealersCargaArchivosSincService>();
+// Evento de Carga Snapshot de Dealers
+builder.Services.AddScoped<IEventoCargaSnapshotDealerRepository, EventoCargaSnapshotDealerRepository>();
+builder.Services.AddScoped<IEventoCargaSnapshotDealerService, EventoCargaSnapshotDealerService>();
 
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento

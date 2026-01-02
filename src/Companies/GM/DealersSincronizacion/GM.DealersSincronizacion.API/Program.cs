@@ -244,15 +244,19 @@ builder.Services.AddScoped<IOracleConnectionFactory>(sp =>
 // ⚙️ Configurar Dependency Injection
 // Repositories
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
-builder.Services.AddScoped<ICargaArchivoSincRepository, CargaArchivoSincRepository>();
-builder.Services.AddScoped<ISincArchivoDealerRepository, SincArchivoDealerRepository>();
 builder.Services.AddScoped<IDistribuidorRepository, DistribuidorRepository>();
+
+// Evento de Carga de Proceso (nuevo)
+builder.Services.AddScoped<IEventoCargaProcesoRepository, EventoCargaProcesoRepository>();
+builder.Services.AddScoped<IEventoCargaProcesoService, EventoCargaProcesoService>();
+
+// Sincronización de Carga de Proceso por Dealer (nuevo)
+builder.Services.AddScoped<ISincCargaProcesoDealerRepository, SincCargaProcesoDealerRepository>();
+builder.Services.AddScoped<ISincCargaProcesoDealerService, SincCargaProcesoDealerService>();
 
 // Services
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
-builder.Services.AddScoped<ICargaArchivoSincService, CargaArchivoSincService>();
-builder.Services.AddScoped<ISincArchivoDealerService, SincArchivoDealerService>();
 
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento

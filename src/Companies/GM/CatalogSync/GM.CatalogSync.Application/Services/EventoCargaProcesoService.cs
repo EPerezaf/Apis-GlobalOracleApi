@@ -1,0 +1,208 @@
+using GM.CatalogSync.Application.DTOs;
+using GM.CatalogSync.Application.Exceptions;
+using GM.CatalogSync.Domain.Entities;
+using GM.CatalogSync.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
+using Shared.Exceptions;
+using Shared.Security;
+
+namespace GM.CatalogSync.Application.Services;
+
+/// <summary>
+/// Implementación del servicio para Evento de Carga de Proceso.
+/// </summary>
+public class EventoCargaProcesoService : IEventoCargaProcesoService
+{
+    private readonly IEventoCargaProcesoRepository _repository;
+    private readonly ILogger<EventoCargaProcesoService> _logger;
+
+    public EventoCargaProcesoService(
+        IEventoCargaProcesoRepository repository,
+        ILogger<EventoCargaProcesoService> logger)
+    {
+        _repository = repository;
+        _logger = logger;
+    }
+
+    /// <inheritdoc />
+    public async Task<EventoCargaProcesoDto?> ObtenerPorIdAsync(int id)
+    {
+        _logger.LogInformation("🔷 [SERVICE] Obteniendo registro de evento de carga con ID {Id}", id);
+
+        var entidad = await _repository.ObtenerPorIdAsync(id);
+
+        if (entidad == null)
+        {
+            _logger.LogWarning("⚠️ [SERVICE] Registro de evento de carga con ID {Id} no encontrado", id);
+            return null;
+        }
+
+        _logger.LogInformation("✅ [SERVICE] Registro de evento de carga con ID {Id} obtenido exitosamente", id);
+        return MapearADto(entidad);
+    }
+
+    /// <inheritdoc />
+    public async Task<(List<EventoCargaProcesoDto> data, int totalRecords)> ObtenerTodosConFiltrosAsync(
+        string? proceso = null,
+        string? idCarga = null,
+        bool? actual = null,
+        int page = 1,
+        int pageSize = 200)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] Obteniendo registros de evento de carga con filtros. Proceso: {Proceso}, IdCarga: {IdCarga}, Actual: {Actual}, Página: {Page}, PageSize: {PageSize}",
+            proceso ?? "null", idCarga ?? "null", actual?.ToString() ?? "null", page, pageSize);
+
+        var (entidades, totalRecords) = await _repository.ObtenerTodosConFiltrosAsync(proceso, idCarga, actual, page, pageSize);
+
+        _logger.LogInformation(
+            "✅ [SERVICE] Se obtuvieron {Cantidad} registros de evento de carga de {Total} totales (Página {Page})",
+            entidades.Count, totalRecords, page);
+
+        var dtos = entidades.Select(MapearADto).ToList();
+        return (dtos, totalRecords);
+    }
+
+    /// <inheritdoc />
+    public async Task<EventoCargaProcesoDto> CrearAsync(
+        CrearEventoCargaProcesoDto dto,
+        string usuarioAlta)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] Iniciando creación de registro de evento de carga. Proceso: {Proceso}, IdCarga: {IdCarga}, Usuario: {Usuario}",
+            dto.Proceso, dto.IdCarga, usuarioAlta);
+
+        // Validar que el IdCarga no exista
+        var existeIdCarga = await _repository.ExisteIdCargaAsync(dto.IdCarga);
+        if (existeIdCarga)
+        {
+            _logger.LogWarning(
+                "⚠️ [SERVICE] El ID de carga '{IdCarga}' ya existe. Usuario: {Usuario}",
+                dto.IdCarga, usuarioAlta);
+            throw new IdCargaDuplicadoException(dto.IdCarga);
+        }
+
+        // Validar datos requeridos
+        if (string.IsNullOrWhiteSpace(dto.Proceso))
+        {
+            throw new CargaArchivoSincValidacionException("El proceso es requerido");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.NombreArchivo))
+        {
+            throw new CargaArchivoSincValidacionException("El nombre del archivo es requerido");
+        }
+
+        if (string.IsNullOrWhiteSpace(dto.IdCarga))
+        {
+            throw new CargaArchivoSincValidacionException("El ID de carga es requerido");
+        }
+
+        // Crear entidad
+        var entidad = new EventoCargaProceso
+        {
+            Proceso = dto.Proceso.Trim(),
+            NombreArchivo = dto.NombreArchivo.Trim(),
+            FechaCarga = DateTimeHelper.GetMexicoDateTime(), // Calculado automáticamente (hora de México)
+            IdCarga = dto.IdCarga.Trim(),
+            Registros = dto.Registros,
+            DealersTotales = dto.DealersTotales,
+            TablaRelacion = !string.IsNullOrWhiteSpace(dto.TablaRelacion) ? dto.TablaRelacion.Trim() : null,
+            ComponenteRelacionado = !string.IsNullOrWhiteSpace(dto.ComponenteRelacionado) ? dto.ComponenteRelacionado.Trim() : null,
+            DealersSincronizados = 0, // Default 0
+            PorcDealersSinc = 0.00m, // Default 0.00
+            Actual = true // Siempre se crea como actual
+        };
+
+        // Crear con transacción (actualiza anteriores y crea nuevo)
+        var entidadCreada = await _repository.CrearConTransaccionAsync(entidad, usuarioAlta);
+
+        _logger.LogInformation(
+            "✅ [SERVICE] Registro de evento de carga creado exitosamente. ID: {Id}, Proceso: {Proceso}, IdCarga: {IdCarga}",
+            entidadCreada.EventoCargaProcesoId, entidadCreada.Proceso, entidadCreada.IdCarga);
+
+        return MapearADto(entidadCreada);
+    }
+
+    /// <inheritdoc />
+    public async Task<EventoCargaProcesoDto> ActualizarDealersTotalesAsync(
+        int eventoCargaProcesoId,
+        string usuarioModificacion)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] Actualizando DealersTotales. EventoCargaProcesoId: {Id}, Usuario: {Usuario}",
+            eventoCargaProcesoId, usuarioModificacion);
+
+        // Verificar que existe el registro
+        var entidad = await _repository.ObtenerPorIdAsync(eventoCargaProcesoId);
+        if (entidad == null)
+        {
+            _logger.LogWarning(
+                "⚠️ [SERVICE] No se encontró registro de evento de carga con ID {Id}",
+                eventoCargaProcesoId);
+            throw new NotFoundException(
+                $"No se encontró un registro de evento de carga con ID {eventoCargaProcesoId}",
+                "EventoCargaProceso",
+                eventoCargaProcesoId.ToString());
+        }
+
+        // Actualizar DealersTotales (cuenta dealers únicos en EventoCargaSnapshotDealer)
+        var filasAfectadas = await _repository.ActualizarDealersTotalesAsync(
+            eventoCargaProcesoId,
+            usuarioModificacion);
+
+        if (filasAfectadas == 0)
+        {
+            _logger.LogWarning(
+                "⚠️ [SERVICE] No se actualizó ningún registro. ID: {Id}",
+                eventoCargaProcesoId);
+            throw new NotFoundException(
+                $"No se encontró un registro de evento de carga con ID {eventoCargaProcesoId}",
+                "EventoCargaProceso",
+                eventoCargaProcesoId.ToString());
+        }
+
+        // Obtener el registro actualizado
+        var entidadActualizada = await _repository.ObtenerPorIdAsync(eventoCargaProcesoId);
+        if (entidadActualizada == null)
+        {
+            _logger.LogError(
+                "❌ [SERVICE] Error al obtener registro actualizado. ID: {Id}",
+                eventoCargaProcesoId);
+            throw new BusinessException("Error al obtener el registro actualizado");
+        }
+
+        _logger.LogInformation(
+            "✅ [SERVICE] DealersTotales actualizado exitosamente. ID: {Id}, DealersTotales: {DealersTotales}",
+            eventoCargaProcesoId, entidadActualizada.DealersTotales);
+
+        return MapearADto(entidadActualizada);
+    }
+
+    /// <summary>
+    /// Mapea una entidad a DTO.
+    /// </summary>
+    private static EventoCargaProcesoDto MapearADto(EventoCargaProceso entidad)
+    {
+        return new EventoCargaProcesoDto
+        {
+            EventoCargaProcesoId = entidad.EventoCargaProcesoId,
+            Proceso = entidad.Proceso,
+            NombreArchivo = entidad.NombreArchivo,
+            FechaCarga = entidad.FechaCarga,
+            IdCarga = entidad.IdCarga,
+            Registros = entidad.Registros,
+            Actual = entidad.Actual,
+            DealersTotales = entidad.DealersTotales,
+            DealersSincronizados = entidad.DealersSincronizados,
+            PorcDealersSinc = entidad.PorcDealersSinc,
+            TablaRelacion = entidad.TablaRelacion,
+            ComponenteRelacionado = entidad.ComponenteRelacionado,
+            FechaAlta = entidad.FechaAlta,
+            UsuarioAlta = entidad.UsuarioAlta,
+            FechaModificacion = entidad.FechaModificacion,
+            UsuarioModificacion = entidad.UsuarioModificacion
+        };
+    }
+}
+

@@ -10,16 +10,16 @@ namespace GM.DealersSincronizacion.Application.Services;
 public class ProductoService : IProductoService
 {
     private readonly IProductoRepository _repository;
-    private readonly ICargaArchivoSincService _cargaArchivoSincService;
+    private readonly IEventoCargaProcesoService _eventoCargaProcesoService;
     private readonly ILogger<ProductoService> _logger;
 
     public ProductoService(
         IProductoRepository repository,
-        ICargaArchivoSincService cargaArchivoSincService,
+        IEventoCargaProcesoService eventoCargaProcesoService,
         ILogger<ProductoService> logger)
     {
         _repository = repository;
-        _cargaArchivoSincService = cargaArchivoSincService;
+        _eventoCargaProcesoService = eventoCargaProcesoService;
         _logger = logger;
     }
 
@@ -46,29 +46,29 @@ public class ProductoService : IProductoService
             DefinicionVehiculo = p.DefinicionVehiculo
         }).ToList();
 
-        // Obtener información de carga actual filtrada por proceso "ProductList"
-        var cargaActual = await _cargaArchivoSincService.ObtenerActualPorProcesoAsync("ProductList");
+        // Obtener información de evento de carga actual filtrada por proceso "ProductList"
+        var eventoActual = await _eventoCargaProcesoService.ObtenerActualPorProcesoAsync("ProductList");
 
         var resultado = new ProductosConCargaDto
         {
             Productos = productosDto,
-            CargaArchivoSincronizacionId = cargaActual?.CargaArchivoSincronizacionId ?? 0,
-            Proceso = cargaActual?.Proceso ?? string.Empty,
-            FechaCarga = cargaActual?.FechaCarga ?? DateTime.MinValue,
-            IdCarga = cargaActual?.IdCarga ?? string.Empty,
-            Registros = cargaActual?.Registros ?? 0,
-            Actual = cargaActual?.Actual ?? false,
-            TablaRelacion = cargaActual?.TablaRelacion
+            EventoCargaProcesoId = eventoActual?.EventoCargaProcesoId ?? 0,
+            Proceso = eventoActual?.Proceso ?? string.Empty,
+            FechaCarga = eventoActual?.FechaCarga ?? DateTime.MinValue,
+            IdCarga = eventoActual?.IdCarga ?? string.Empty,
+            Registros = eventoActual?.Registros ?? 0,
+            Actual = eventoActual?.Actual ?? false,
+            TablaRelacion = eventoActual?.TablaRelacion
         };
 
-        if (cargaActual == null)
+        if (eventoActual == null)
         {
-            _logger.LogWarning("⚠️ [SERVICE] No se encontró registro actual de carga para proceso 'ProductList'. Los campos de carga estarán vacíos.");
+            _logger.LogWarning("⚠️ [SERVICE] No se encontró registro actual de evento de carga para proceso 'ProductList'. Los campos de carga estarán vacíos.");
         }
         else
         {
-            _logger.LogInformation("✅ [SERVICE] {Cantidad} productos obtenidos de {Total} totales con información de carga (Proceso: {Proceso}, CargaId: {CargaId})", 
-                productosDto.Count, totalRecords, cargaActual.Proceso, cargaActual.CargaArchivoSincronizacionId);
+            _logger.LogInformation("✅ [SERVICE] {Cantidad} productos obtenidos de {Total} totales con información de carga (Proceso: {Proceso}, EventoCargaProcesoId: {EventoCargaProcesoId})", 
+                productosDto.Count, totalRecords, eventoActual.Proceso, eventoActual.EventoCargaProcesoId);
         }
         
         return (resultado, totalRecords);

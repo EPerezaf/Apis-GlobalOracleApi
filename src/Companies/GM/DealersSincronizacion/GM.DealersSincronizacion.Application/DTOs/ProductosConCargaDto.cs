@@ -11,9 +11,9 @@ public class ProductosConCargaDto
     public List<ProductoDto> Productos { get; set; } = new();
 
     /// <summary>
-    /// ID de la carga de archivo de sincronización actual.
+    /// ID del evento de carga de proceso actual.
     /// </summary>
-    public int CargaArchivoSincronizacionId { get; set; }
+    public int EventoCargaProcesoId { get; set; }
 
     /// <summary>
     /// Nombre del proceso de sincronización.

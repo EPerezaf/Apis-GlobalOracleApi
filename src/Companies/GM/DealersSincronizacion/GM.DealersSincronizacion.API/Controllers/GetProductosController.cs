@@ -59,7 +59,7 @@ public class GetProductosController : ControllerBase
     ///   - `marcaNegocio`: Marca de negocio
     ///   - `nombreLocal`: Nombre local (opcional)
     ///   - `definicionVehiculo`: Definición del vehículo (opcional)
-    /// - `cargaArchivoSincronizacionId`: ID de la carga de archivo de sincronización actual
+    /// - `eventoCargaProcesoId`: ID del evento de carga de proceso actual
     /// - `proceso`: Nombre del proceso de sincronización (ej: "ProductList")
     /// - `fechaCarga`: Fecha y hora de carga del archivo
     /// - `idCarga`: ID único de la carga (ej: "catalogo_productos_27122025_1444")
