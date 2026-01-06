@@ -16,5 +16,17 @@ public class Distribuidor
     public string Dms { get; set; } = string.Empty;
     public string? NombreDealer { get; set; }
     public string? Marca { get; set; }
+    
+    /// <summary>
+    /// URL del webhook del distribuidor.
+    /// Columna: CODI_URLWEBHOOK
+    /// </summary>
+    public string? UrlWebhook { get; set; }
+    
+    /// <summary>
+    /// Secret key del webhook del distribuidor.
+    /// Columna: CODI_SECRETKEY
+    /// </summary>
+    public string? SecretKey { get; set; }
 }
 

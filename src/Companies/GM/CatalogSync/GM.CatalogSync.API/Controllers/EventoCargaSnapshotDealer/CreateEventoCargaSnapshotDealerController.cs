@@ -65,6 +65,8 @@ public class CreateEventoCargaSnapshotDealerController : ControllerBase
     /// - `nombreDealer`: Se obtiene de `CO_DISTRIBUIDORES.CODI_NOMBRE`
     /// - `razonSocialDealer`: Se obtiene de `CO_DISTRIBUIDORES.CODI_RAZONSOCIAL`
     /// - `dms`: Se obtiene de `CO_DISTRIBUIDORES.CODI_DMS` (si está vacío, se usa "GDMS" por defecto)
+    /// - `urlWebhook`: Se obtiene de `CO_DISTRIBUIDORES.CODI_URLWEBHOOK`
+    /// - `secretKey`: Se obtiene de `CO_DISTRIBUIDORES.CODI_SECRETKEY`
     /// 
     /// **Campos calculados automáticamente:**
     /// - `fechaRegistro`: Se calcula automáticamente con hora de México
@@ -79,7 +81,7 @@ public class CreateEventoCargaSnapshotDealerController : ControllerBase
     /// 
     /// ⚠️ **IMPORTANTE:**
     /// - ❌ NO se envía payload en el body (el endpoint no recibe JSON)
-    /// - ❌ NO enviar `dealerBac`, `nombreDealer`, `razonSocialDealer`, `dms` (se obtienen automáticamente de CO_DISTRIBUIDORES)
+    /// - ❌ NO enviar `dealerBac`, `nombreDealer`, `razonSocialDealer`, `dms`, `urlWebhook`, `secretKey` (se obtienen automáticamente de CO_DISTRIBUIDORES)
     /// - ❌ NO enviar `eventoCargaSnapshotDealerId` (se genera automáticamente)
     /// - ❌ NO enviar `fechaRegistro` (se calcula automáticamente con hora de México)
     /// - ❌ NO enviar campos de auditoría (se calculan automáticamente)

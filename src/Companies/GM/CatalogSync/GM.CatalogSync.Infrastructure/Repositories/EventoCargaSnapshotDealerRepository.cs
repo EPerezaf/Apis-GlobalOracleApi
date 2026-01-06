@@ -117,6 +117,8 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                 f.COSD_USUARIOALTA as UsuarioAlta,
                 f.COSD_FECHAMODIFICACION as FechaModificacion,
                 f.COSD_USUARIOMODIFICACION as UsuarioModificacion,
+                f.COSD_URLWEBHOOK as UrlWebhook,
+                f.COSD_SECRETKEY as SecretKey,
                 c.COCP_IDCARGA as IdCarga,
                 c.COCP_PROCESO as ProcesoCarga,
                 c.COCP_FECHACARGA as FechaCarga,
@@ -254,6 +256,8 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                         f.COSD_USUARIOALTA as UsuarioAlta,
                         f.COSD_FECHAMODIFICACION as FechaModificacion,
                         f.COSD_USUARIOMODIFICACION as UsuarioModificacion,
+                        f.COSD_URLWEBHOOK as UrlWebhook,
+                        f.COSD_SECRETKEY as SecretKey,
                         c.COCP_IDCARGA as IdCarga,
                         c.COCP_PROCESO as ProcesoCarga,
                         c.COCP_FECHACARGA as FechaCarga,
@@ -389,6 +393,8 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                         COSD_USUARIOALTA as UsuarioAlta,
                         COSD_FECHAMODIFICACION as FechaModificacion,
                         COSD_USUARIOMODIFICACION as UsuarioModificacion,
+                        COSD_URLWEBHOOK as UrlWebhook,
+                        COSD_SECRETKEY as SecretKey,
                         ROW_NUMBER() OVER (ORDER BY COSD_EVENTOCARGASNAPDEALERID DESC) AS RNUM
                     FROM {TABLA}
                     {whereClause}
@@ -456,7 +462,9 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                 COSD_FECHAALTA as FechaAlta,
                 COSD_USUARIOALTA as UsuarioAlta,
                 COSD_FECHAMODIFICACION as FechaModificacion,
-                COSD_USUARIOMODIFICACION as UsuarioModificacion
+                COSD_USUARIOMODIFICACION as UsuarioModificacion,
+                COSD_URLWEBHOOK as UrlWebhook,
+                COSD_SECRETKEY as SecretKey
             FROM CO_EVENTOSCARGASNAPSHOTDEALERS
             WHERE COSD_COCP_EVENTOCARGAPROCESOID = :EventoCargaProcesoId";
 
@@ -499,7 +507,9 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                 COSD_DMS,
                 COSD_FECHAREGISTRO,
                 COSD_FECHAALTA,
-                COSD_USUARIOALTA
+                COSD_USUARIOALTA,
+                COSD_URLWEBHOOK,
+                COSD_SECRETKEY
             ) VALUES (
                 {SECUENCIA}.NEXTVAL,
                 :EventoCargaProcesoId,
@@ -509,7 +519,9 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                 :Dms,
                 :FechaRegistro,
                 SYSDATE,
-                :UsuarioAlta
+                :UsuarioAlta,
+                :UrlWebhook,
+                :SecretKey
             ) RETURNING COSD_EVENTOCARGASNAPDEALERID INTO :Id";
 
         try
@@ -550,6 +562,8 @@ public class EventoCargaSnapshotDealerRepository : IEventoCargaSnapshotDealerRep
                     parametros.Add("Dms", entidad.Dms ?? "GDMS");
                     parametros.Add("FechaRegistro", entidad.FechaRegistro);
                     parametros.Add("UsuarioAlta", usuarioAlta);
+                    parametros.Add("UrlWebhook", entidad.UrlWebhook);
+                    parametros.Add("SecretKey", entidad.SecretKey);
                     parametros.Add("Id", dbType: System.Data.DbType.Int32, direction: System.Data.ParameterDirection.Output);
 
                     await connection.ExecuteAsync(sqlInsert, parametros, transaction);

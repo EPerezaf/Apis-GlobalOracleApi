@@ -92,6 +92,16 @@ public class EventoCargaSnapshotDealerDto
     /// Usuario que realizó la última modificación.
     /// </summary>
     public string? UsuarioModificacion { get; set; }
+
+    /// <summary>
+    /// URL del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_URLWEBHOOK).
+    /// </summary>
+    public string? UrlWebhook { get; set; }
+
+    /// <summary>
+    /// Secret key del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_SECRETKEY).
+    /// </summary>
+    public string? SecretKey { get; set; }
 }
 
 /// <summary>
