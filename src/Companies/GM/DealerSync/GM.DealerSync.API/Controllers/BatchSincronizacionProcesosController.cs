@@ -1,0 +1,512 @@
+using GM.DealerSync.Application.DTOs;
+using GM.DealerSync.Application.Services;
+using GM.DealerSync.Domain.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Shared.Contracts.Responses;
+using Shared.Security;
+using StackExchange.Redis;
+
+namespace GM.DealerSync.API.Controllers;
+
+/// <summary>
+/// Controller para sincronización batch de procesos
+/// </summary>
+[ApiController]
+[Route("api/v1/gm/dealer-sync/batch-sincronizacion-procesos")]
+[Produces("application/json")]
+[Authorize]
+public class BatchSincronizacionProcesosController : ControllerBase
+{
+    private readonly IDistributedLockService? _distributedLockService;
+    private readonly IBatchSyncJobService _batchSyncJobService;
+    private readonly IProcessTypeService _processTypeService;
+    private readonly ILogger<BatchSincronizacionProcesosController> _logger;
+    private readonly IConnectionMultiplexer? _redisConnection;
+    private const int LOCK_EXPIRY_SECONDS = 60; // 1 minuto
+
+    public BatchSincronizacionProcesosController(
+        IDistributedLockService? distributedLockService,
+        IBatchSyncJobService batchSyncJobService,
+        IProcessTypeService processTypeService,
+        ILogger<BatchSincronizacionProcesosController> logger,
+        IConnectionMultiplexer? redisConnection = null)
+    {
+        _distributedLockService = distributedLockService;
+        _batchSyncJobService = batchSyncJobService;
+        _processTypeService = processTypeService;
+        _logger = logger;
+        _redisConnection = redisConnection;
+    }
+
+    /// <summary>
+    /// Inicia un proceso de sincronización batch adquiriendo un lock y ejecutando el proceso automáticamente
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint adquiere el distributed lock Y ejecuta el proceso automáticamente.
+    /// 
+    /// **Flujo del proceso:**
+    /// 1. Valida que el processType esté en la lista de procesos permitidos e implementados
+    /// 2. Intenta adquirir un distributed lock para el processType especificado
+    /// 3. Si el lock ya existe (proceso en ejecución), retorna 409 Conflict
+    /// 4. Si el lock se adquiere exitosamente, inicia el proceso en background automáticamente
+    /// 5. El proceso dura 1 minuto y muestra logs cada 5 segundos
+    /// 6. Retorna 202 Accepted con ProcessId inmediatamente
+    /// 7. El lock se libera automáticamente después de 1 minuto
+    /// 
+    /// **Procesos disponibles:**
+    /// - ProductList: Sincronización de lista de productos
+    /// 
+    /// **Nota:** Si se intenta ejecutar un proceso no implementado, se retornará 400 Bad Request con la lista de procesos disponibles.
+    /// </remarks>
+    /// <param name="dto">Datos del proceso de sincronización batch</param>
+    /// <returns>Respuesta con el ProcessId y confirmación de inicio</returns>
+    [HttpPost]
+    [ProducesResponseType(typeof(ApiResponse<BatchSincronizacionProcesosResponseDto>), 202)]
+    [ProducesResponseType(typeof(ApiResponse), 400)]
+    [ProducesResponseType(typeof(ApiResponse), 409)]
+    [ProducesResponseType(typeof(ApiResponse), 500)]
+    [ProducesResponseType(typeof(ApiResponse), 503)]
+    public async Task<IActionResult> IniciarBatchSincronizacionProcesos(
+        [FromBody] BatchSincronizacionProcesosDto dto)
+    {
+        var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+        var startTime = DateTimeHelper.GetMexicoDateTime();
+        
+        // Generar ProcessId único
+        var processId = Guid.NewGuid().ToString("N").Substring(0, 16).ToUpper();
+
+        _logger.LogInformation(
+            "📥 [BATCH_SYNC] Solicitud recibida. ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}",
+            dto.ProcessType, dto.IdCarga, correlationId, processId);
+
+        try
+        {
+            // Validar modelo
+            if (!ModelState.IsValid)
+            {
+                var errors = ModelState.Values
+                    .SelectMany(v => v.Errors)
+                    .Select(e => e.ErrorMessage)
+                    .ToList();
+
+                _logger.LogWarning(
+                    "⚠️ [BATCH_SYNC] Validación fallida. ProcessType: {ProcessType}, IdCarga: {IdCarga}, Errors: {Errors}, ProcessId: {ProcessId}",
+                    dto.ProcessType, dto.IdCarga, string.Join(", ", errors), processId);
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = $"Validación fallida: {string.Join(", ", errors)}",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            // Paso 4: Validar que el proceso esté implementado y permitido
+            if (string.IsNullOrWhiteSpace(dto.ProcessType) || !_processTypeService.IsProcessTypeImplemented(dto.ProcessType))
+            {
+                var procesosImplementados = _processTypeService.GetImplementedProcessTypes().ToList();
+                var procesosDisponibles = _processTypeService.GetAllAvailableProcessTypes().ToList();
+                var procesosDisponiblesStr = string.Join(", ", procesosImplementados);
+                
+                var mensajeError = $"El proceso '{dto.ProcessType}' no está implementado o no está permitido para sincronización batch. " +
+                                 $"Procesos implementados y disponibles: {procesosDisponiblesStr}";
+                
+                _logger.LogWarning(
+                    "⚠️ [BATCH_SYNC] Proceso no implementado. ProcessType: {ProcessType}, IdCarga: {IdCarga}, ProcessId: {ProcessId}, ProcesosImplementados: {ProcesosImplementados}",
+                    dto.ProcessType, dto.IdCarga, processId, procesosDisponiblesStr);
+                
+                Console.WriteLine($"⚠️ [BATCH_SYNC] PROCESO NO IMPLEMENTADO: {dto.ProcessType}");
+                Console.WriteLine($"⚠️ [BATCH_SYNC] Procesos implementados: {procesosDisponiblesStr}");
+                Console.Out.Flush();
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = mensajeError,
+                    Data = new
+                    {
+                        ProcessTypeSolicitado = dto.ProcessType,
+                        ProcesosImplementados = procesosImplementados,
+                        TodosLosProcesosDisponibles = procesosDisponibles,
+                        Mensaje = "El proceso solicitado aún no está implementado. Solo los procesos en la lista de 'ProcesosImplementados' pueden ejecutarse."
+                    },
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            // Paso 5: Intentar adquirir lock
+            if (_distributedLockService == null)
+            {
+                _logger.LogError(
+                    "❌ [BATCH_SYNC] DistributedLockService no está disponible. Redis no está configurado o no está disponible. ProcessId: {ProcessId}",
+                    processId);
+                return StatusCode(503, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Servicio de distributed locking no disponible. Redis no está configurado o no está disponible.",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            _logger.LogInformation(
+                "🔒 [BATCH_SYNC] Intentando adquirir lock para processType: {ProcessType}, ProcessId: {ProcessId}",
+                dto.ProcessType, processId);
+
+            var expiryTime = TimeSpan.FromSeconds(LOCK_EXPIRY_SECONDS);
+            var lockDisposable = await _distributedLockService.TryAcquireLockAsync(dto.ProcessType, expiryTime);
+
+            // Paso 6-7: Si el lock ya existe (proceso en ejecución)
+            if (lockDisposable == null)
+            {
+                var currentTimeString = DateTimeHelper.GetMexicoTimeString();
+                
+                // Log detallado solo en Serilog
+                _logger.LogWarning(
+                    "⚠️ [BATCH_SYNC] PROCESO OCUPADO - Lock DENEGADO | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, Timestamp: {Timestamp}, Razón: Ya existe un proceso en ejecución, Acción: Intente después de {LockExpirySeconds}s",
+                    dto.ProcessType, dto.IdCarga, correlationId, processId, currentTimeString, LOCK_EXPIRY_SECONDS);
+
+                return Conflict(new ApiResponse<BatchSincronizacionProcesosResponseDto>
+                {
+                    Success = false,
+                    Message = $"⚠️ PROCESO OCUPADO: El processType '{dto.ProcessType}' está siendo procesado actualmente. " +
+                             $"Intente nuevamente después de {LOCK_EXPIRY_SECONDS} segundos.",
+                    Data = new BatchSincronizacionProcesosResponseDto
+                    {
+                        ProcessId = processId,
+                        LockAcquired = false,
+                        ProcessType = dto.ProcessType,
+                        IdCarga = dto.IdCarga,
+                        Message = $"Proceso ya en ejecución. El lock se liberará automáticamente después de {LOCK_EXPIRY_SECONDS} segundos.",
+                        StartTime = startTime,
+                        LockExpirySeconds = LOCK_EXPIRY_SECONDS
+                    },
+                    Timestamp = currentTimeString
+                });
+            }
+
+            // Paso 8: Lock adquirido exitosamente - Iniciar proceso automáticamente
+            var lockAcquiredTime = DateTimeHelper.GetMexicoDateTime();
+            var lockAcquiredTimeString = DateTimeHelper.GetMexicoTimeString();
+            
+            // Logs simplificados en consola
+            Console.WriteLine("════════════════════════════════════════════════════════════");
+            Console.WriteLine($"✅ [BATCH_SYNC] PROCESO INICIADO");
+            Console.WriteLine($"✅ [BATCH_SYNC] ProcessId: {processId}");
+            Console.WriteLine($"✅ [BATCH_SYNC] ProcessType: {dto.ProcessType}");
+            Console.WriteLine($"✅ [BATCH_SYNC] IdCarga: {dto.IdCarga}");
+            Console.WriteLine($"✅ [DISTRIBUTED_LOCK] Lock adquirido exitosamente");
+            Console.WriteLine("════════════════════════════════════════════════════════════");
+            Console.Out.Flush();
+            
+            // Log detallado solo en Serilog
+            _logger.LogInformation(
+                "✅ [BATCH_SYNC] Lock adquirido exitosamente - INICIANDO PROCESO AUTOMÁTICAMENTE | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, LockAcquiredTime: {LockAcquiredTime}, LockExpirySeconds: {LockExpirySeconds}",
+                dto.ProcessType, dto.IdCarga, correlationId, processId, lockAcquiredTimeString, LOCK_EXPIRY_SECONDS);
+
+            // Capturar variables locales para el closure
+            var processIdLocal = processId;
+            var processTypeLocal = dto.ProcessType;
+            var idCargaLocal = dto.IdCarga;
+            var lockDisposableLocal = lockDisposable;
+            
+            // Ejecutar el proceso en background SIN await - esto retorna inmediatamente la respuesta HTTP
+            // El proceso continuará ejecutándose y mostrará todos los logs en consola
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    // Ejecutar el servicio directamente - esto mostrará todos los logs cada 5 segundos
+                    await _batchSyncJobService.ExecuteBatchSyncAsync(
+                        processIdLocal,
+                        processTypeLocal,
+                        idCargaLocal,
+                        lockDisposableLocal)
+                        .ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    var errorMsg = $"❌ [BATCH_SYNC] Error durante ejecución del proceso. ProcessId: {processIdLocal}";
+                    Console.WriteLine(errorMsg);
+                    Console.WriteLine($"❌ [BATCH_SYNC] Error: {ex.Message}");
+                    Console.Out.Flush();
+                    _logger.LogError(ex,
+                        "❌ [BATCH_SYNC] Error durante ejecución del proceso. ProcessId: {ProcessId}, ProcessType: {ProcessType}, IdCarga: {IdCarga}",
+                        processIdLocal, processTypeLocal, idCargaLocal);
+                }
+            });
+            
+            var tareaIniciadaMsg = $"✅ [BATCH_SYNC] Proceso iniciado en background. ProcessId: {processIdLocal}";
+            Console.WriteLine(tareaIniciadaMsg);
+            Console.Out.Flush();
+            _logger.LogInformation(
+                "✅ [BATCH_SYNC] Proceso iniciado en background exitosamente. ProcessId: {ProcessId}",
+                processIdLocal);
+
+            var response = new BatchSincronizacionProcesosResponseDto
+            {
+                ProcessId = processId,
+                LockAcquired = true,
+                ProcessType = dto.ProcessType,
+                IdCarga = dto.IdCarga,
+                Message = $"✅ Proceso de sincronización batch iniciado exitosamente. ProcessId: {processId}. " +
+                         $"El proceso durará 1 minuto y mostrará logs cada 5 segundos. El lock se liberará automáticamente al finalizar.",
+                StartTime = startTime,
+                LockExpirySeconds = LOCK_EXPIRY_SECONDS
+            };
+
+            _logger.LogInformation(
+                "✅ [BATCH_SYNC] Proceso iniciado en background. ProcessId: {ProcessId}, ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}",
+                processId, dto.ProcessType, dto.IdCarga, correlationId);
+
+            // Retornar 202 Accepted (lock adquirido Y proceso iniciado)
+            return Accepted(new ApiResponse<BatchSincronizacionProcesosResponseDto>
+            {
+                Success = true,
+                Message = response.Message,
+                Data = response,
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+        catch (InvalidOperationException ex) when (ex.Message.Contains("RedLockFactory"))
+        {
+            _logger.LogError(ex,
+                "❌ [BATCH_SYNC] Redis no está disponible. ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}",
+                dto.ProcessType, dto.IdCarga, correlationId, processId);
+
+            return StatusCode(503, new ApiResponse
+            {
+                Success = false,
+                Message = "Servicio de distributed locking no disponible. Redis no está configurado o no está disponible. " +
+                         "Por favor, asegúrese de que Redis esté corriendo y configurado correctamente.",
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "❌ [BATCH_SYNC] Error inesperado al adquirir lock. ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, Error: {ErrorMessage}",
+                dto.ProcessType, dto.IdCarga, correlationId, processId, ex.Message);
+
+            return StatusCode(500, new ApiResponse
+            {
+                Success = false,
+                Message = $"Error interno del servidor al adquirir el lock: {ex.Message}",
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+    }
+
+
+    /// <summary>
+    /// Verifica el estado del lock para un processType específico
+    /// </summary>
+    /// <remarks>
+    /// Este endpoint permite verificar si hay un proceso en ejecución (lock activo) para un processType específico.
+    /// Útil para verificar el estado antes de intentar adquirir un nuevo lock.
+    /// </remarks>
+    /// <param name="processType">Tipo de proceso a verificar (ej: "productList")</param>
+    /// <returns>Estado del lock y procesos pendientes</returns>
+    [HttpGet("estado/{processType}")]
+    [ProducesResponseType(typeof(ApiResponse<object>), 200)]
+    [ProducesResponseType(typeof(ApiResponse), 503)]
+    public async Task<IActionResult> VerificarEstadoLock([FromRoute] string processType)
+    {
+        var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+
+        _logger.LogInformation(
+            "🔍 [BATCH_SYNC] Verificando estado del lock. ProcessType: {ProcessType}, CorrelationId: {CorrelationId}",
+            processType, correlationId);
+
+        try
+        {
+            if (_distributedLockService == null)
+            {
+                return StatusCode(503, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Servicio de distributed locking no disponible. Redis no está configurado o no está disponible.",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            var isLockActive = await _distributedLockService.IsLockActiveAsync(processType);
+
+            var estado = new
+            {
+                ProcessType = processType,
+                LockActivo = isLockActive,
+                Mensaje = isLockActive
+                    ? $"⚠️ El processType '{processType}' tiene un lock activo. Hay un proceso en ejecución."
+                    : $"✅ El processType '{processType}' está disponible. No hay locks activos."
+            };
+
+            return Ok(new ApiResponse<object>
+            {
+                Success = true,
+                Message = estado.Mensaje,
+                Data = estado,
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "❌ [BATCH_SYNC] Error al verificar estado del lock. ProcessType: {ProcessType}, CorrelationId: {CorrelationId}",
+                processType, correlationId);
+
+            return StatusCode(500, new ApiResponse
+            {
+                Success = false,
+                Message = $"Error al verificar estado del lock: {ex.Message}",
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+    }
+
+    /// <summary>
+    /// 🧪 ENDPOINT DE DESARROLLO - Limpia todos los locks de Redis (SOLO PARA PRUEBAS)
+    /// </summary>
+    /// <remarks>
+    /// ⚠️ Este endpoint es SOLO para desarrollo y pruebas. NO debe usarse en producción.
+    /// Limpia todos los locks activos en Redis para permitir nuevas ejecuciones.
+    /// </remarks>
+    /// <returns>Confirmación de limpieza</returns>
+    [HttpDelete("limpiar-locks")]
+    [ProducesResponseType(typeof(ApiResponse), 200)]
+    [ProducesResponseType(typeof(ApiResponse), 503)]
+    public async Task<IActionResult> LimpiarLocks()
+    {
+        var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
+
+        _logger.LogWarning(
+            "🧪 [BATCH_SYNC] [DEV] Solicitud de limpieza de locks. CorrelationId: {CorrelationId}",
+            correlationId);
+        
+        Console.WriteLine("════════════════════════════════════════════════════════════");
+        Console.WriteLine("🧪 [BATCH_SYNC] [DEV] LIMPIANDO LOCKS DE REDIS...");
+        Console.WriteLine("════════════════════════════════════════════════════════════");
+
+        try
+        {
+            if (_redisConnection == null || !_redisConnection.IsConnected)
+            {
+                var msg = "Redis no está disponible. No se pueden limpiar locks.";
+                Console.WriteLine($"❌ {msg}");
+                return StatusCode(503, new ApiResponse
+                {
+                    Success = false,
+                    Message = msg,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            var db = _redisConnection.GetDatabase();
+            var server = _redisConnection.GetServer(_redisConnection.GetEndPoints().First());
+            
+            // Buscar TODAS las keys relacionadas con locks (RedLock puede usar diferentes formatos)
+            var allKeys = new List<StackExchange.Redis.RedisKey>();
+            
+            // Patrón 1: lock:sync:*
+            allKeys.AddRange(server.Keys(pattern: "lock:sync:*").ToArray());
+            
+            // Patrón 2: Buscar todas las keys que contengan "lock" (por si RedLock usa otro formato)
+            // Esto es más agresivo pero necesario para limpiar locks bloqueados
+            var allLockKeys = server.Keys(pattern: "*lock*").ToArray();
+            foreach (var key in allLockKeys)
+            {
+                if (!allKeys.Contains(key))
+                {
+                    allKeys.Add(key);
+                }
+            }
+            
+            var keysDeleted = 0;
+            var keysToDelete = allKeys.Distinct().ToArray();
+
+            foreach (var key in keysToDelete)
+            {
+                var keyString = key.ToString();
+                // Solo eliminar keys que realmente sean de locks (evitar eliminar otras keys importantes)
+                if (keyString.Contains("lock:sync:") || keyString.StartsWith("lock:"))
+                {
+                    await db.KeyDeleteAsync(key);
+                    keysDeleted++;
+                    var deleteMsg = $"🧪 [BATCH_SYNC] [DEV] Key eliminada: {keyString}";
+                    Console.WriteLine(deleteMsg);
+                    Console.Out.Flush();
+                    _logger.LogWarning(deleteMsg);
+                }
+            }
+            
+            // Si no encontramos keys con el patrón específico, intentar eliminar todas las keys relacionadas con RedLock
+            if (keysDeleted == 0)
+            {
+                // Listar TODAS las keys en Redis para debugging
+                var allRedisKeys = server.Keys(pattern: "*").ToArray();
+                Console.WriteLine($"🧪 [BATCH_SYNC] [DEV] Total de keys en Redis: {allRedisKeys.Length}");
+                Console.Out.Flush();
+                
+                foreach (var key in allRedisKeys.Take(20)) // Mostrar solo las primeras 20
+                {
+                    var keyStr = key.ToString();
+                    Console.WriteLine($"🧪 [BATCH_SYNC] [DEV] Key encontrada: {keyStr}");
+                    Console.Out.Flush();
+                    
+                    // Intentar eliminar keys que parezcan ser locks
+                    if (keyStr.Contains("lock") || keyStr.Contains("sync") || keyStr.Contains("ProductoList"))
+                    {
+                        await db.KeyDeleteAsync(key);
+                        keysDeleted++;
+                        Console.WriteLine($"🧪 [BATCH_SYNC] [DEV] Key eliminada: {keyStr}");
+                        Console.Out.Flush();
+                    }
+                }
+                
+                // También intentar eliminar directamente las keys conocidas
+                var knownKeys = new[] { "lock:sync:ProductoList", "lock:sync:ProductList" };
+                foreach (var knownKey in knownKeys)
+                {
+                    if (await db.KeyExistsAsync(knownKey))
+                    {
+                        await db.KeyDeleteAsync(knownKey);
+                        keysDeleted++;
+                        Console.WriteLine($"🧪 [BATCH_SYNC] [DEV] Key conocida eliminada: {knownKey}");
+                        Console.Out.Flush();
+                    }
+                }
+            }
+
+            var successMsg = $"🧪 [BATCH_SYNC] [DEV] {keysDeleted} lock(s) limpiado(s) exitosamente. CorrelationId: {correlationId}";
+            Console.WriteLine("════════════════════════════════════════════════════════════");
+            Console.WriteLine(successMsg);
+            Console.WriteLine("════════════════════════════════════════════════════════════");
+            _logger.LogWarning(
+                "🧪 [BATCH_SYNC] [DEV] {KeysDeleted} lock(s) limpiado(s) exitosamente. CorrelationId: {CorrelationId}",
+                keysDeleted, correlationId);
+
+            return Ok(new ApiResponse
+            {
+                Success = true,
+                Message = $"⚠️ {keysDeleted} lock(s) limpiado(s) manualmente (SOLO DESARROLLO).",
+                Data = new { KeysDeleted = keysDeleted },
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"❌ [BATCH_SYNC] [DEV] Error al limpiar locks: {ex.Message}";
+            Console.WriteLine(errorMsg);
+            _logger.LogError(ex,
+                "❌ [BATCH_SYNC] [DEV] Error al limpiar locks. CorrelationId: {CorrelationId}",
+                correlationId);
+
+            return StatusCode(500, new ApiResponse
+            {
+                Success = false,
+                Message = $"Error al limpiar locks: {ex.Message}",
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+        }
+    }
+}

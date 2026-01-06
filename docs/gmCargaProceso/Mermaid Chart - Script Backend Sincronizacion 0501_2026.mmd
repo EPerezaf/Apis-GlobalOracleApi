@@ -1,0 +1,77 @@
+sequenceDiagram
+    autonumber
+
+    participant UI as UI / Admin
+    participant API as Backend API
+    participant BatchAPI as Batch Sync API\n(/batch-sincronizacion-procesos)
+    participant Lock as Lock / Semaphore\n(DB / Redis)
+    participant BG as Background Sync Service
+    participant DB as Control DB
+    participant ClientRepo as Dealers Repository
+    participant Pool as Thread Pool
+    participant Auth as Dealer Auth API
+    participant Webhook as Dealer Webhook API
+
+    %% ==== DISPARO DEL PROCESO ====
+    UI ->> API: Actualiza catálogo / proceso
+    API ->> DB: Registrar evento de cambio\n(processType, idCarga, fechaCarga)
+    API -->> UI: 200 OK
+
+    UI ->> BatchAPI: POST /batch-sincronizacion-procesos\n(processType, idCarga)
+
+    %% ==== SEMÁFORO / LOCK ====
+    BatchAPI ->> Lock: Intentar adquirir lock\n(processType)
+    alt Lock ya existe (proceso en ejecución)
+        Lock -->> BatchAPI: Lock DENEGADO
+        BatchAPI -->> UI: 409 Conflict\nProceso ya en ejecución
+    else Lock adquirido
+        Lock -->> BatchAPI: Lock OK
+        BatchAPI ->> DB: Registrar job en estado RUNNING
+        BatchAPI ->> BG: Encolar job de sincronización
+        BatchAPI -->> UI: 202 Accepted (Job en background)
+    end
+
+    %% ==== PROCESO BACKGROUND ====
+    BG ->> DB: Obtener procesos pendientes
+    DB -->> BG: Lista de procesos
+
+    BG ->> ClientRepo: Obtener dealers activos
+    ClientRepo -->> BG: Lista de dealers\n(webhook, credenciales)
+
+    %% ==== LOOP MULTIHILO ====
+    BG ->> Pool: Ejecutar sincronización concurrente
+    loop Por cada dealer (concurrency limitada)
+        Pool ->> DB: Verificar estado previo\n(dealer + proceso)
+        DB -->> Pool: Estado anterior
+
+        alt Dealer pendiente o fallido
+            %% ==== AUTENTICACIÓN ====
+            Pool ->> Auth: POST /login\nCredenciales dealer
+            alt Auth falla
+                Auth -->> Pool: Error 401/403
+                Pool ->> DB: Registrar error auth
+            else Auth OK
+                Auth -->> Pool: JWT Token
+
+                %% ==== ENVÍO WEBHOOK ====
+                Pool ->> Webhook: POST /webhook/actualizacion-proceso\nJWT + Payload
+                alt Error técnico (timeout / 5xx)
+                    Webhook -->> Pool: Error técnico
+                    Pool ->> DB: Registrar intento fallido\n(retry)
+                else Error funcional (4xx)
+                    Webhook -->> Pool: Error funcional
+                    Pool ->> DB: Marcar como no soportado
+                else OK
+                    Webhook -->> Pool: 200 OK + ACK
+                    Pool ->> DB: Registrar éxito\nACK + versión
+                end
+            end
+        else Ya sincronizado
+            Pool ->> DB: Omitir dealer
+        end
+    end
+
+    %% ==== FINALIZACIÓN Y LIBERACIÓN DEL LOCK ====
+    BG ->> DB: Actualizar estado global del proceso\n(COMPLETED / PARTIAL / FAILED)
+    BG ->> Lock: Liberar lock\n(processType)
+    Lock -->> BG: Lock liberado
