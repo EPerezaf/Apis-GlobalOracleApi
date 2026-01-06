@@ -104,5 +104,7 @@ public class EventoCargaSnapshotDealerMap
     public string? TokenConfirmacion { get; set; }
     public decimal? TiempoSincronizacionHoras { get; set; }
     public int Sincronizado { get; set; }
+    public string? UrlWebhook { get; set; }
+    public string? SecretKey { get; set; }
 }
 

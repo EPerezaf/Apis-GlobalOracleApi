@@ -60,6 +60,8 @@ public class GetEventoCargaSnapshotDealerController : ControllerBase
     /// - `razonSocialDealer`: Razón social legal del dealer
     /// - `dms`: Sistema DMS utilizado
     /// - `fechaRegistro`: Fecha de registro del snapshot
+    /// - `urlWebhook`: URL del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_URLWEBHOOK)
+    /// - `secretKey`: Secret key del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_SECRETKEY)
     /// - Campos de auditoría: fechaAlta, usuarioAlta, fechaModificacion, usuarioModificacion
     /// 
     /// **Respuesta exitosa incluye:**

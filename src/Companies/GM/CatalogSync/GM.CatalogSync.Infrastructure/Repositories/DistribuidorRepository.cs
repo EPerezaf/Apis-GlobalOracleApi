@@ -40,7 +40,9 @@ public class DistribuidorRepository : IDistribuidorRepository
                 CODI_SITECODE as SiteCode,
                 CODI_DMS as Dms,
                 CODI_NOMBRE as NombreDealer,
-                CODI_MARCA as Marca
+                CODI_MARCA as Marca,
+                CODI_URLWEBHOOK as UrlWebhook,
+                CODI_SECRETKEY as SecretKey
             FROM CO_DISTRIBUIDORES
             WHERE DEALERID = :DealerBac
             AND ROWNUM = 1";
@@ -86,7 +88,9 @@ public class DistribuidorRepository : IDistribuidorRepository
                 CODI_SITECODE as SiteCode,
                 CODI_DMS as Dms,
                 CODI_NOMBRE as NombreDealer,
-                CODI_MARCA as Marca
+                CODI_MARCA as Marca,
+                CODI_URLWEBHOOK as UrlWebhook,
+                CODI_SECRETKEY as SecretKey
             FROM CO_DISTRIBUIDORES
             WHERE 1=1";
 

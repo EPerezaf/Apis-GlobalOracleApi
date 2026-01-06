@@ -75,5 +75,21 @@ public class EventoCargaSnapshotDealer
     /// Columna: COSD_USUARIOMODIFICACION
     /// </summary>
     public string? UsuarioModificacion { get; set; }
+
+    // ========================================
+    // CAMPOS DE WEBHOOK
+    // ========================================
+
+    /// <summary>
+    /// URL del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_URLWEBHOOK).
+    /// Columna: COSD_URLWEBHOOK
+    /// </summary>
+    public string? UrlWebhook { get; set; }
+
+    /// <summary>
+    /// Secret key del webhook del distribuidor (obtenido de CO_DISTRIBUIDORES.CODI_SECRETKEY).
+    /// Columna: COSD_SECRETKEY
+    /// </summary>
+    public string? SecretKey { get; set; }
 }
 

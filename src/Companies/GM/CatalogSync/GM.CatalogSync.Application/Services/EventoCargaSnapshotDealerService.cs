@@ -145,7 +145,9 @@ public class EventoCargaSnapshotDealerService : IEventoCargaSnapshotDealerServic
             Dms = string.IsNullOrWhiteSpace(d.Dms) ? "GDMS" : d.Dms,
             FechaRegistro = fechaRegistro,
             FechaAlta = DateTimeHelper.GetMexicoDateTime(),
-            UsuarioAlta = usuarioAlta
+            UsuarioAlta = usuarioAlta,
+            UrlWebhook = d.UrlWebhook,
+            SecretKey = d.SecretKey
         }).ToList();
 
         // 5. Insertar en batch
@@ -194,7 +196,9 @@ public class EventoCargaSnapshotDealerService : IEventoCargaSnapshotDealerServic
             FechaAlta = map.FechaAlta,
             UsuarioAlta = map.UsuarioAlta,
             FechaModificacion = map.FechaModificacion,
-            UsuarioModificacion = map.UsuarioModificacion
+            UsuarioModificacion = map.UsuarioModificacion,
+            UrlWebhook = map.UrlWebhook,
+            SecretKey = map.SecretKey
         };
     }
 }
