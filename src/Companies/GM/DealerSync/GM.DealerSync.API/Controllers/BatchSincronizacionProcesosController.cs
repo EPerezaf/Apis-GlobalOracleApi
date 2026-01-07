@@ -1,6 +1,8 @@
 using GM.DealerSync.Application.DTOs;
 using GM.DealerSync.Application.Services;
+using GM.DealerSync.Domain.Entities;
 using GM.DealerSync.Domain.Interfaces;
+using Hangfire;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
@@ -21,20 +23,26 @@ public class BatchSincronizacionProcesosController : ControllerBase
     private readonly IDistributedLockService? _distributedLockService;
     private readonly IBatchSyncJobService _batchSyncJobService;
     private readonly IProcessTypeService _processTypeService;
+    private readonly ISyncControlRepository _syncControlRepository;
+    private readonly IDealerRepository _dealerRepository;
     private readonly ILogger<BatchSincronizacionProcesosController> _logger;
     private readonly IConnectionMultiplexer? _redisConnection;
-    private const int LOCK_EXPIRY_SECONDS = 60; // 1 minuto
+    private const int LOCK_INITIAL_EXPIRY_SECONDS = 600; // 10 minutos iniciales (se renovará dinámicamente)
 
     public BatchSincronizacionProcesosController(
         IDistributedLockService? distributedLockService,
         IBatchSyncJobService batchSyncJobService,
         IProcessTypeService processTypeService,
+        ISyncControlRepository syncControlRepository,
+        IDealerRepository dealerRepository,
         ILogger<BatchSincronizacionProcesosController> logger,
         IConnectionMultiplexer? redisConnection = null)
     {
         _distributedLockService = distributedLockService;
         _batchSyncJobService = batchSyncJobService;
         _processTypeService = processTypeService;
+        _syncControlRepository = syncControlRepository;
+        _dealerRepository = dealerRepository;
         _logger = logger;
         _redisConnection = redisConnection;
     }
@@ -49,10 +57,11 @@ public class BatchSincronizacionProcesosController : ControllerBase
     /// 1. Valida que el processType esté en la lista de procesos permitidos e implementados
     /// 2. Intenta adquirir un distributed lock para el processType especificado
     /// 3. Si el lock ya existe (proceso en ejecución), retorna 409 Conflict
-    /// 4. Si el lock se adquiere exitosamente, inicia el proceso en background automáticamente
-    /// 5. El proceso dura 1 minuto y muestra logs cada 5 segundos
-    /// 6. Retorna 202 Accepted con ProcessId inmediatamente
-    /// 7. El lock se libera automáticamente después de 1 minuto
+    /// 4. Si el lock se adquiere exitosamente, encola el proceso en Hangfire (background)
+    /// 5. El proceso se ejecuta completamente en background usando Hangfire, procesando todos los dealers
+    /// 6. Retorna 202 Accepted con ProcessId inmediatamente (el proceso continúa en background)
+    /// 7. Al finalizar el proceso (si todo está bien), se actualiza el estado en BD a COMPLETED
+    /// 8. El lock se libera automáticamente cuando el proceso finaliza
     /// 
     /// **Procesos disponibles:**
     /// - ProductList: Sincronización de lista de productos
@@ -153,113 +162,243 @@ public class BatchSincronizacionProcesosController : ControllerBase
                 "🔒 [BATCH_SYNC] Intentando adquirir lock para processType: {ProcessType}, ProcessId: {ProcessId}",
                 dto.ProcessType, processId);
 
-            var expiryTime = TimeSpan.FromSeconds(LOCK_EXPIRY_SECONDS);
-            var lockDisposable = await _distributedLockService.TryAcquireLockAsync(dto.ProcessType, expiryTime);
+            var expiryTime = TimeSpan.FromSeconds(LOCK_INITIAL_EXPIRY_SECONDS);
+            var lockWrapper = await _distributedLockService.TryAcquireLockAsync(dto.ProcessType, expiryTime);
 
             // Paso 6-7: Si el lock ya existe (proceso en ejecución)
-            if (lockDisposable == null)
+            if (lockWrapper == null)
             {
                 var currentTimeString = DateTimeHelper.GetMexicoTimeString();
                 
                 // Log detallado solo en Serilog
                 _logger.LogWarning(
-                    "⚠️ [BATCH_SYNC] PROCESO OCUPADO - Lock DENEGADO | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, Timestamp: {Timestamp}, Razón: Ya existe un proceso en ejecución, Acción: Intente después de {LockExpirySeconds}s",
-                    dto.ProcessType, dto.IdCarga, correlationId, processId, currentTimeString, LOCK_EXPIRY_SECONDS);
+                    "⚠️ [BATCH_SYNC] PROCESO OCUPADO - Lock DENEGADO | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, Timestamp: {Timestamp}, Razón: Ya existe un proceso en ejecución",
+                    dto.ProcessType, dto.IdCarga, correlationId, processId, currentTimeString);
 
                 return Conflict(new ApiResponse<BatchSincronizacionProcesosResponseDto>
                 {
                     Success = false,
                     Message = $"⚠️ PROCESO OCUPADO: El processType '{dto.ProcessType}' está siendo procesado actualmente. " +
-                             $"Intente nuevamente después de {LOCK_EXPIRY_SECONDS} segundos.",
+                             $"Intente nuevamente después de que finalice el proceso actual.",
                     Data = new BatchSincronizacionProcesosResponseDto
                     {
                         ProcessId = processId,
                         LockAcquired = false,
                         ProcessType = dto.ProcessType,
                         IdCarga = dto.IdCarga,
-                        Message = $"Proceso ya en ejecución. El lock se liberará automáticamente después de {LOCK_EXPIRY_SECONDS} segundos.",
+                        Message = $"Proceso ya en ejecución. El lock se renovará dinámicamente hasta que termine el proceso.",
                         StartTime = startTime,
-                        LockExpirySeconds = LOCK_EXPIRY_SECONDS
+                        LockExpirySeconds = LOCK_INITIAL_EXPIRY_SECONDS
                     },
                     Timestamp = currentTimeString
                 });
             }
 
-            // Paso 8: Lock adquirido exitosamente - Iniciar proceso automáticamente
+            // Paso 8: Lock adquirido exitosamente
             var lockAcquiredTime = DateTimeHelper.GetMexicoDateTime();
             var lockAcquiredTimeString = DateTimeHelper.GetMexicoTimeString();
-            
+            var usuarioAlta = JwtUserHelper.GetCurrentUser(User, _logger);
+
+            // Paso 9: Obtener EventoCargaProcesoId y FechaCarga desde CO_EVENTOSCARGAPROCESO
+            var eventoInfo = await _dealerRepository.GetEventoCargaProcesoInfoAsync(dto.ProcessType, dto.IdCarga);
+            if (!eventoInfo.HasValue)
+            {
+                _logger.LogWarning(
+                    "⚠️ [BATCH_SYNC] No se encontró EventoCargaProcesoId para ProcessType: {ProcessType}, IdCarga: {IdCarga}",
+                    dto.ProcessType, dto.IdCarga);
+                lockWrapper?.Dispose();
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = $"No se encontró un proceso de carga con ProcessType '{dto.ProcessType}' e IdCarga '{dto.IdCarga}'",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            var eventoCargaProcesoId = eventoInfo.Value.EventoCargaProcesoId;
+            var fechaCarga = eventoInfo.Value.FechaCarga;
+
+            // Validar el Estatus del proceso antes de continuar
+            var estatusProceso = await _dealerRepository.GetEventoCargaProcesoEstatusAsync(dto.ProcessType, dto.IdCarga);
+            if (!string.IsNullOrWhiteSpace(estatusProceso) && estatusProceso.Equals("SINCRONIZADA", StringComparison.OrdinalIgnoreCase))
+            {
+                _logger.LogWarning(
+                    "⚠️ [BATCH_SYNC] El proceso ya está sincronizado. ProcessType: {ProcessType}, IdCarga: {IdCarga}, Estatus: {Estatus}",
+                    dto.ProcessType, dto.IdCarga, estatusProceso);
+                
+                lockWrapper?.Dispose();
+                
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = $"El proceso '{dto.ProcessType}' con IdCarga '{dto.IdCarga}' ya está sincronizado. " +
+                             $"Estatus actual: {estatusProceso}. " +
+                             $"No se puede ejecutar nuevamente el proceso de sincronización.",
+                    Data = new
+                    {
+                        ProcessType = dto.ProcessType,
+                        IdCarga = dto.IdCarga,
+                        Estatus = estatusProceso,
+                        EventoCargaProcesoId = eventoCargaProcesoId
+                    },
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            // Paso 9: Validar si hay procesos en ejecución (RUNNING o PENDING) para evitar ejecuciones concurrentes
+            // NOTA: No validamos COMPLETED o FAILED porque esos procesos ya terminaron y permitimos re-ejecutar
+            SyncControl syncControl;
+            try
+            {
+                var registroActivo = await _syncControlRepository.GetByProcessAsync(dto.ProcessType, dto.IdCarga, fechaCarga);
+                
+                if (registroActivo != null && (registroActivo.Status == "PENDING" || registroActivo.Status == "RUNNING"))
+                {
+                    // Hay un proceso en curso o pendiente - no permitir ejecutar otro
+                    _logger.LogWarning(
+                        "⚠️ [BATCH_SYNC] Ya existe un proceso en estado {Status} para ProcessType: {ProcessType}, IdCarga: {IdCarga}. SyncControlId: {SyncControlId}",
+                        registroActivo.Status, dto.ProcessType, dto.IdCarga, registroActivo.SyncControlId);
+                    lockWrapper?.Dispose();
+                    return Conflict(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"Ya existe un proceso en estado '{registroActivo.Status}' para ProcessType '{dto.ProcessType}' e IdCarga '{dto.IdCarga}'. " +
+                                 $"Debe esperar a que termine o finalice para poder ejecutarlo nuevamente.",
+                        Data = new
+                        {
+                            SyncControlId = registroActivo.SyncControlId,
+                            Status = registroActivo.Status,
+                            ProcessType = registroActivo.ProcessType,
+                            IdCarga = registroActivo.IdCarga
+                        },
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                // Si no hay procesos activos (o todos están COMPLETED/FAILED), crear un NUEVO registro
+                // Esto permite mantener historial de todas las ejecuciones
+                syncControl = new SyncControl
+                {
+                    ProcessType = dto.ProcessType,
+                    IdCarga = dto.IdCarga,
+                    FechaCarga = fechaCarga, // Usar fecha del proceso obtenida desde la BD
+                    EventoCargaProcesoId = eventoCargaProcesoId,
+                    Status = "PENDING",
+                    WebhooksTotales = 0
+                };
+                
+                syncControl = await _syncControlRepository.CreateAsync(syncControl, usuarioAlta);
+                _logger.LogInformation(
+                    "✅ [BATCH_SYNC] Nuevo registro creado en CO_EVENTOSCARGASINCCONTROL. SyncControlId: {SyncControlId}",
+                    syncControl.SyncControlId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "❌ [BATCH_SYNC] Error al crear registro en CO_EVENTOSCARGASINCCONTROL. ProcessId: {ProcessId}",
+                    processId);
+                lockWrapper?.Dispose();
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = $"Error al registrar el proceso en la base de datos: {ex.Message}",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            // Paso 10: Encolar job en Hangfire
+            string hangfireJobId;
+            try
+            {
+                hangfireJobId = BackgroundJob.Enqueue<IBatchSyncJobService>(service =>
+                    service.ExecuteBatchSyncWithHangfireAsync(syncControl.SyncControlId, processId, dto.ProcessType, dto.IdCarga));
+
+                _logger.LogInformation(
+                    "✅ [BATCH_SYNC] Job encolado en Hangfire. JobId: {HangfireJobId}, ProcessId: {ProcessId}",
+                    hangfireJobId, processId);
+
+                // Registrar el lock para que Hangfire pueda acceder a él
+                BatchSyncJobService.RegisterActiveLock(dto.ProcessType, lockWrapper);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "❌ [BATCH_SYNC] Error al encolar job en Hangfire. ProcessId: {ProcessId}",
+                    processId);
+                lockWrapper?.Dispose();
+                // Actualizar status a FAILED en la BD
+                try
+                {
+                    await _syncControlRepository.UpdateStatusToFailedAsync(
+                        syncControl.SyncControlId,
+                        "Error al encolar job en Hangfire",
+                        ex.ToString(),
+                        usuarioAlta);
+                }
+                catch { /* Ignorar error de actualización */ }
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error al encolar el job en Hangfire",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
+            // Paso 9 (continuación): Actualizar status a RUNNING con HangfireJobId
+            try
+            {
+                await _syncControlRepository.UpdateStatusToRunningAsync(
+                    syncControl.SyncControlId,
+                    hangfireJobId,
+                    usuarioAlta);
+
+                _logger.LogInformation(
+                    "✅ [BATCH_SYNC] Status actualizado a RUNNING. SyncControlId: {SyncControlId}, HangfireJobId: {HangfireJobId}",
+                    syncControl.SyncControlId, hangfireJobId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex,
+                    "⚠️ [BATCH_SYNC] Error al actualizar status a RUNNING. SyncControlId: {SyncControlId}",
+                    syncControl.SyncControlId);
+                // Continuar aunque falle la actualización
+            }
+
             // Logs simplificados en consola
             Console.WriteLine("════════════════════════════════════════════════════════════");
             Console.WriteLine($"✅ [BATCH_SYNC] PROCESO INICIADO");
             Console.WriteLine($"✅ [BATCH_SYNC] ProcessId: {processId}");
             Console.WriteLine($"✅ [BATCH_SYNC] ProcessType: {dto.ProcessType}");
             Console.WriteLine($"✅ [BATCH_SYNC] IdCarga: {dto.IdCarga}");
+            Console.WriteLine($"✅ [BATCH_SYNC] SyncControlId: {syncControl.SyncControlId}");
+            Console.WriteLine($"✅ [BATCH_SYNC] HangfireJobId: {hangfireJobId}");
             Console.WriteLine($"✅ [DISTRIBUTED_LOCK] Lock adquirido exitosamente");
             Console.WriteLine("════════════════════════════════════════════════════════════");
             Console.Out.Flush();
             
             // Log detallado solo en Serilog
             _logger.LogInformation(
-                "✅ [BATCH_SYNC] Lock adquirido exitosamente - INICIANDO PROCESO AUTOMÁTICAMENTE | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, LockAcquiredTime: {LockAcquiredTime}, LockExpirySeconds: {LockExpirySeconds}",
-                dto.ProcessType, dto.IdCarga, correlationId, processId, lockAcquiredTimeString, LOCK_EXPIRY_SECONDS);
+                "✅ [BATCH_SYNC] Job registrado y encolado en Hangfire | ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, ProcessId: {ProcessId}, SyncControlId: {SyncControlId}, HangfireJobId: {HangfireJobId}, LockAcquiredTime: {LockAcquiredTime}",
+                dto.ProcessType, dto.IdCarga, correlationId, processId, syncControl.SyncControlId, hangfireJobId, lockAcquiredTimeString);
 
-            // Capturar variables locales para el closure
-            var processIdLocal = processId;
-            var processTypeLocal = dto.ProcessType;
-            var idCargaLocal = dto.IdCarga;
-            var lockDisposableLocal = lockDisposable;
-            
-            // Ejecutar el proceso en background SIN await - esto retorna inmediatamente la respuesta HTTP
-            // El proceso continuará ejecutándose y mostrará todos los logs en consola
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    // Ejecutar el servicio directamente - esto mostrará todos los logs cada 5 segundos
-                    await _batchSyncJobService.ExecuteBatchSyncAsync(
-                        processIdLocal,
-                        processTypeLocal,
-                        idCargaLocal,
-                        lockDisposableLocal)
-                        .ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    var errorMsg = $"❌ [BATCH_SYNC] Error durante ejecución del proceso. ProcessId: {processIdLocal}";
-                    Console.WriteLine(errorMsg);
-                    Console.WriteLine($"❌ [BATCH_SYNC] Error: {ex.Message}");
-                    Console.Out.Flush();
-                    _logger.LogError(ex,
-                        "❌ [BATCH_SYNC] Error durante ejecución del proceso. ProcessId: {ProcessId}, ProcessType: {ProcessType}, IdCarga: {IdCarga}",
-                        processIdLocal, processTypeLocal, idCargaLocal);
-                }
-            });
-            
-            var tareaIniciadaMsg = $"✅ [BATCH_SYNC] Proceso iniciado en background. ProcessId: {processIdLocal}";
-            Console.WriteLine(tareaIniciadaMsg);
-            Console.Out.Flush();
-            _logger.LogInformation(
-                "✅ [BATCH_SYNC] Proceso iniciado en background exitosamente. ProcessId: {ProcessId}",
-                processIdLocal);
-
+            // Paso 11: Retornar 202 Accepted (Job encolado, se ejecutará en background con Hangfire)
             var response = new BatchSincronizacionProcesosResponseDto
             {
                 ProcessId = processId,
                 LockAcquired = true,
                 ProcessType = dto.ProcessType,
                 IdCarga = dto.IdCarga,
-                Message = $"✅ Proceso de sincronización batch iniciado exitosamente. ProcessId: {processId}. " +
-                         $"El proceso durará 1 minuto y mostrará logs cada 5 segundos. El lock se liberará automáticamente al finalizar.",
+                Message = $"✅ Proceso de sincronización batch iniciado exitosamente y encolado en Hangfire. " +
+                         $"ProcessId: {processId}, HangfireJobId: {hangfireJobId}. " +
+                         $"El proceso se ejecutará en background y se actualizará el estado en BD al finalizar.",
                 StartTime = startTime,
-                LockExpirySeconds = LOCK_EXPIRY_SECONDS
+                LockExpirySeconds = LOCK_INITIAL_EXPIRY_SECONDS
             };
 
             _logger.LogInformation(
-                "✅ [BATCH_SYNC] Proceso iniciado en background. ProcessId: {ProcessId}, ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}",
-                processId, dto.ProcessType, dto.IdCarga, correlationId);
+                "✅ [BATCH_SYNC] Job encolado exitosamente - Retornando 202 Accepted | ProcessId: {ProcessId}, ProcessType: {ProcessType}, IdCarga: {IdCarga}, CorrelationId: {CorrelationId}, HangfireJobId: {HangfireJobId}",
+                processId, dto.ProcessType, dto.IdCarga, correlationId, hangfireJobId);
 
-            // Retornar 202 Accepted (lock adquirido Y proceso iniciado)
             return Accepted(new ApiResponse<BatchSincronizacionProcesosResponseDto>
             {
                 Success = true,

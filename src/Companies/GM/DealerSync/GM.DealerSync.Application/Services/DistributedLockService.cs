@@ -22,7 +22,7 @@ public class DistributedLockService : IDistributedLockService
     }
 
     /// <inheritdoc />
-    public async Task<IDisposable?> TryAcquireLockAsync(string processType, TimeSpan? expiryTime = null)
+    public async Task<IRedisLockWrapper?> TryAcquireLockAsync(string processType, TimeSpan? expiryTime = null)
     {
         if (string.IsNullOrWhiteSpace(processType))
         {
@@ -122,17 +122,82 @@ public class DistributedLockService : IDistributedLockService
         }
     }
 
+    /// <inheritdoc />
+    public async Task<bool> RenewLockAsync(string processType, string lockValue, TimeSpan newExpiryTime)
+    {
+        if (string.IsNullOrWhiteSpace(processType))
+        {
+            throw new ArgumentException("El processType no puede estar vacío", nameof(processType));
+        }
+
+        if (string.IsNullOrWhiteSpace(lockValue))
+        {
+            throw new ArgumentException("El lockValue no puede estar vacío", nameof(lockValue));
+        }
+
+        if (_redis == null || !_redis.IsConnected)
+        {
+            _logger.LogError(
+                "❌ [DISTRIBUTED_LOCK] Redis no está disponible. No se puede renovar el lock.");
+            return false;
+        }
+
+        var lockKey = $"lock:sync:{processType}";
+
+        try
+        {
+            var db = _redis.GetDatabase();
+            
+            // Verificar que el lock existe y tiene el mismo valor (para evitar renovar locks de otros procesos)
+            var currentValue = await db.StringGetAsync(lockKey);
+            
+            if (!currentValue.HasValue || currentValue.ToString() != lockValue)
+            {
+                _logger.LogWarning(
+                    "⚠️ [DISTRIBUTED_LOCK] No se puede renovar lock - Lock no existe o fue reemplazado | ProcessType: {ProcessType}, Key: {LockKey}",
+                    processType, lockKey);
+                return false;
+            }
+
+            // Renovar el lock extendiendo su tiempo de expiración
+            var renewed = await db.KeyExpireAsync(lockKey, newExpiryTime);
+            
+            if (renewed)
+            {
+                _logger.LogDebug(
+                    "🔄 [DISTRIBUTED_LOCK] Lock renovado exitosamente | ProcessType: {ProcessType}, Key: {LockKey}, NewExpiry: {NewExpirySeconds}s",
+                    processType, lockKey, newExpiryTime.TotalSeconds);
+                return true;
+            }
+            else
+            {
+                _logger.LogWarning(
+                    "⚠️ [DISTRIBUTED_LOCK] No se pudo renovar el lock | ProcessType: {ProcessType}, Key: {LockKey}",
+                    processType, lockKey);
+                return false;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex,
+                "❌ [DISTRIBUTED_LOCK] Error al renovar lock para processType: {ProcessType}, Key: {LockKey}",
+                processType, lockKey);
+            return false;
+        }
+    }
+
     /// <summary>
     /// Wrapper para manejar el dispose del lock de Redis
     /// </summary>
-    private class RedisLockWrapper : IDisposable
+    private class RedisLockWrapper : IRedisLockWrapper
     {
         private readonly IConnectionMultiplexer _redis;
-        private readonly string _processType;
         private readonly string _lockKey;
-        private readonly string _lockValue;
         private readonly ILogger<DistributedLockService> _logger;
         private bool _disposed = false;
+
+        public string ProcessType { get; }
+        public string LockValue { get; }
 
         public RedisLockWrapper(
             IConnectionMultiplexer redis,
@@ -142,9 +207,9 @@ public class DistributedLockService : IDistributedLockService
             ILogger<DistributedLockService> logger)
         {
             _redis = redis;
-            _processType = processType;
+            ProcessType = processType;
             _lockKey = lockKey;
-            _lockValue = lockValue;
+            LockValue = lockValue;
             _logger = logger;
         }
 
@@ -154,41 +219,52 @@ public class DistributedLockService : IDistributedLockService
             {
                 try
                 {
-                    // Eliminar el lock de Redis solo si el valor coincide (para evitar liberar locks de otros procesos)
+                    // Usar script Lua atómico para eliminar el lock solo si el valor coincide
+                    // Esto evita condiciones de carrera y garantiza que solo eliminamos nuestro propio lock
                     var db = _redis.GetDatabase();
-                    var currentValue = db.StringGet(_lockKey);
                     
-                    if (currentValue == _lockValue)
+                    // Script Lua que elimina la key solo si el valor coincide
+                    var script = @"
+                        if redis.call('get', KEYS[1]) == ARGV[1] then
+                            return redis.call('del', KEYS[1])
+                        else
+                            return 0
+                        end";
+                    
+                    var result = (long)db.ScriptEvaluate(
+                        script,
+                        new RedisKey[] { _lockKey },
+                        new RedisValue[] { LockValue });
+                    
+                    if (result == 1)
                     {
-                        db.KeyDelete(_lockKey);
-                        
                         // Log simplificado en consola
                         Console.WriteLine("🔓 [REDIS_LOCK] Lock eliminado exitosamente de Redis");
                         Console.Out.Flush();
                         
                         // Log detallado solo en Serilog
-                        _logger.LogInformation(
-                            "🔓 [DISTRIBUTED_LOCK] Lock eliminado exitosamente de Redis | ProcessType: {ProcessType}, Key: {LockKey}",
-                            _processType, _lockKey);
+                    _logger.LogInformation(
+                            "🔓 [DISTRIBUTED_LOCK] Lock eliminado exitosamente de Redis | ProcessType: {ProcessType}, Key: {LockKey}, LockValue: {LockValue}",
+                            ProcessType, _lockKey, LockValue);
                     }
                     else
                     {
-                        // Log detallado solo en Serilog (el lock expiró es normal, no es necesario mostrar en consola)
-                        _logger.LogWarning(
-                            "⚠️ [DISTRIBUTED_LOCK] Lock ya expiró o fue reemplazado | ProcessType: {ProcessType}, Key: {LockKey}",
-                            _processType, _lockKey);
+                        // El lock ya expiró o fue reemplazado (normal si el proceso terminó y expiró)
+                        _logger.LogDebug(
+                            "⚠️ [DISTRIBUTED_LOCK] Lock ya expiró o fue reemplazado (normal si expiró) | ProcessType: {ProcessType}, Key: {LockKey}",
+                            ProcessType, _lockKey);
                     }
                 }
                 catch (Exception ex)
                 {
-                    // Log de error en consola solo si es crítico
+                    // Log de error en consola
                     Console.WriteLine($"❌ [REDIS_LOCK] Error al liberar lock: {ex.Message}");
                     Console.Out.Flush();
                     
                     // Log detallado solo en Serilog
                     _logger.LogError(ex,
-                        "❌ [DISTRIBUTED_LOCK] Error al liberar lock para processType: {ProcessType}, Key: {LockKey}",
-                        _processType, _lockKey);
+                        "❌ [DISTRIBUTED_LOCK] Error al liberar lock para processType: {ProcessType}, Key: {LockKey}, LockValue: {LockValue}",
+                        ProcessType, _lockKey, LockValue);
                 }
                 finally
                 {

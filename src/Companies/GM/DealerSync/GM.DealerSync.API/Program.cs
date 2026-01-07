@@ -1,3 +1,5 @@
+using Hangfire;
+using Hangfire.Redis.StackExchange;
 using Microsoft.OpenApi.Models;
 using Scalar.AspNetCore;
 using Serilog;
@@ -152,8 +154,41 @@ else
 // Ya no necesitamos RedLockFactory porque usamos IConnectionMultiplexer directamente
 Log.Information("✅ Usando Redis directo (sin RedLock) para distributed locking");
 
-// ⚙️ Hangfire deshabilitado - Usando Task.Run directamente para evitar dependencia de SQL Server
-// Los jobs se ejecutan en background usando Task.Run con manejo correcto de logs
+// ⚙️ Configurar Hangfire con Redis como storage
+if (redisConnection != null)
+{
+    var hangfireConfig = builder.Configuration.GetSection("Hangfire").Get<HangfireConfig>();
+    var workerCount = hangfireConfig?.WorkerCount ?? Environment.ProcessorCount * 5;
+    var queues = hangfireConfig?.Queues ?? new[] { "default", "sync", "retry" };
+
+    builder.Services.AddHangfire(config =>
+    {
+        // Usar Redis como storage para Hangfire
+        config.UseRedisStorage(redisConnection, new Hangfire.Redis.StackExchange.RedisStorageOptions
+        {
+            Prefix = "hangfire:",
+            Db = 0
+        });
+        
+        config.UseSimpleAssemblyNameTypeSerializer();
+        config.UseRecommendedSerializerSettings();
+    });
+
+    builder.Services.AddHangfireServer(options =>
+    {
+        options.WorkerCount = workerCount;
+        options.Queues = queues;
+        options.ServerTimeout = TimeSpan.FromMinutes(4);
+        options.SchedulePollingInterval = TimeSpan.FromSeconds(15);
+    });
+
+    Log.Information("✅ Hangfire configurado con Redis - Workers: {WorkerCount}, Queues: {Queues}",
+        workerCount, string.Join(", ", queues));
+}
+else
+{
+    Log.Warning("⚠️ Hangfire no configurado - Redis no está disponible");
+}
 
 // ⚙️ Configurar JWT
 var jwtConfig = builder.Configuration.GetSection("Jwt").Get<JwtConfig>();
@@ -276,6 +311,20 @@ builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IDistributedLockServi
 });
 Log.Information("✅ DistributedLockService registrado (usando Redis directo)");
 
+// ⚙️ Registrar HttpClientFactory para WebhookSyncService
+builder.Services.AddHttpClient();
+Log.Information("✅ HttpClientFactory registrado");
+
+// ⚙️ Registrar repositorios
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.ISyncControlRepository, GM.DealerSync.Infrastructure.Repositories.SyncControlRepository>();
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IDealerRepository, GM.DealerSync.Infrastructure.Repositories.DealerRepository>();
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IEventoCargaSnapshotDealerRepository, GM.DealerSync.Infrastructure.Repositories.EventoCargaSnapshotDealerRepository>();
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.ISincCargaProcesoDealerRepository, GM.DealerSync.Infrastructure.Repositories.SincCargaProcesoDealerRepository>();
+Log.Information("✅ Repositorios registrados (SyncControlRepository, DealerRepository, EventoCargaSnapshotDealerRepository, SincCargaProcesoDealerRepository)");
+
+builder.Services.AddScoped<GM.DealerSync.Application.Services.IWebhookSyncService, GM.DealerSync.Application.Services.WebhookSyncService>();
+Log.Information("✅ WebhookSyncService registrado");
+
 builder.Services.AddScoped<GM.DealerSync.Application.Services.IBatchSyncJobService, GM.DealerSync.Application.Services.BatchSyncJobService>();
 Log.Information("✅ BatchSyncJobService registrado");
 
@@ -341,7 +390,17 @@ app.MapScalarApiReference(options =>
         .WithTheme(ScalarTheme.BluePlanet);
 });
 
-// ⚙️ Hangfire Dashboard deshabilitado - No se requiere SQL Server
+// ⚙️ Configurar Hangfire Dashboard (solo si Redis está disponible)
+if (redisConnection != null)
+{
+    app.UseHangfireDashboard("/hangfire", new Hangfire.DashboardOptions
+    {
+        DashboardTitle = "GM DealerSync - Hangfire Dashboard",
+        StatsPollingInterval = 2000,
+        Authorization = new[] { new HangfireAuthorizationFilter() }
+    });
+    Log.Information("✅ Hangfire Dashboard disponible en: /hangfire");
+}
 
 app.UseCors();
 
@@ -388,4 +447,19 @@ public class JwtConfig
     public string Subject { get; set; } = string.Empty;
 }
 
-// ⚙️ HangfireAuthorizationFilter removido - Se agregará cuando se configure Hangfire
+public class HangfireConfig
+{
+    public int WorkerCount { get; set; } = 5;
+    public string[] Queues { get; set; } = new[] { "default", "sync", "retry" };
+}
+
+// ⚙️ HangfireAuthorizationFilter - Permite acceso sin autenticación en desarrollo
+public class HangfireAuthorizationFilter : Hangfire.Dashboard.IDashboardAuthorizationFilter
+{
+    public bool Authorize(Hangfire.Dashboard.DashboardContext context)
+    {
+        // En desarrollo, permitir acceso sin autenticación
+        // En producción, implementar lógica de autenticación adecuada
+        return true;
+    }
+}
