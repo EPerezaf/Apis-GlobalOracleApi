@@ -1,0 +1,76 @@
+sequenceDiagram
+    autonumber
+
+    participant Client as Cliente Sync
+    participant AuthAPI as Auth API (/login)
+    participant Backend as Backend Central
+    participant Webhook as Cliente Webhook API
+    participant Auth as Validador JWT
+    participant Router as Process Router
+    participant Handler as Process Handler
+    participant DB as Base de Datos Local
+    participant Control as Tabla Control Sync
+
+    %% ==== AUTENTICACIÓN ====
+    Client ->> AuthAPI: POST /login\nusuario + Secret-API-Key
+    AuthAPI ->> AuthAPI: Validar credenciales
+    alt Credenciales inválidas
+        AuthAPI -->> Client: 401 Unauthorized
+    else Credenciales válidas
+        AuthAPI -->> Client: 200 OK\nJWT Token
+    end
+
+    %% ==== CONSUMO DEL WEBHOOK ====
+    Client ->> Webhook: POST /webhook/actualizacion-proceso\nAuthorization: Bearer JWT\nPayload JSON
+
+    Webhook ->> Auth: Validar JWT
+    alt JWT inválido o expirado
+        Auth -->> Webhook: Error de autenticación
+        Webhook -->> Client: 401 / 403 Unauthorized
+    else JWT válido
+        Auth -->> Webhook: OK
+
+        Webhook ->> Webhook: Validar estructura del payload
+        alt Payload inválido
+            Webhook -->> Client: 400 Bad Request
+        else Payload válido
+            Webhook ->> Router: Resolver processType
+
+            alt Proceso no implementado
+                Router -->> Webhook: Proceso no soportado
+                Webhook -->> Client: 422 Unprocessable Entity
+            else Proceso soportado
+                Router ->> Handler: Instanciar handler específico
+
+                Handler ->> Control: Consultar última versión local\n(idCarga, fechaCarga)
+                Control -->> Handler: Versión actual
+
+                alt Versión antigua o repetida
+                    Handler -->> Webhook: No requiere sincronización
+                    Webhook -->> Client: 200 OK (Sin cambios)
+                else Versión nueva
+                    Handler ->> DB: BEGIN TRANSACTION
+
+                    Handler ->> DB: UPSERT registros\n(Insert / Update)
+                    alt Error durante sincronización
+                        DB -->> Handler: Error
+                        Handler ->> DB: ROLLBACK
+                        Handler -->> Webhook: Error de procesamiento
+                        Webhook -->> Client: 500 Internal Server Error
+                    else Sincronización exitosa
+                        DB -->> Handler: OK
+                        Handler ->> DB: COMMIT
+
+                        Handler ->> Control: Actualizar control sync\n(idCarga, fechaCarga, registrosRecibidos)
+                        Control -->> Handler: OK
+
+                        Handler ->> Handler: Generar ACK Token
+                        Handler -->> Webhook: Resultado OK + ACK
+                        Webhook -->> Client: 200 OK\nACK Token
+                    end
+                end
+            end
+        end
+    end
+
+

@@ -1,0 +1,6 @@
+@GM.DealerSync.API_HostAddress = http://localhost:5078
+
+GET {{GM.DealerSync.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
