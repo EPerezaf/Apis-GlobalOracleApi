@@ -82,6 +82,11 @@ builder.Services.AddSwaggerGen(c =>
             {
                 return new[] { "ProductList" };
             }
+            //Agrupar todos los endpoints de "campaign-list" bajo "CampaignList"
+            if (resourcePath.StartsWith("campaign-list"))
+            {
+                return new[] { "CampaignList" };
+            }
             
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
             var resource = resourcePath.Split('-')
@@ -253,6 +258,10 @@ builder.Services.AddScoped<IOracleConnectionFactory>(sp =>
 // Productos
 builder.Services.AddScoped<IProductoRepository, ProductoRepository>();
 builder.Services.AddScoped<IProductoService, ProductoService>();
+
+// Campanias
+builder.Services.AddScoped<ICampaignRepository, CampaignRepository>();
+builder.Services.AddScoped<ICampaignService, CampaignService>();
 
 // Evento de Carga de Proceso
 builder.Services.AddScoped<IEventoCargaProcesoRepository, EventoCargaProcesoRepository>();
