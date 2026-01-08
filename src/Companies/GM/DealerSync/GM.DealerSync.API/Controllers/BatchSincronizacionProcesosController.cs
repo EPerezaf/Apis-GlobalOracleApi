@@ -306,7 +306,9 @@ public class BatchSincronizacionProcesosController : ControllerBase
                 });
             }
 
-            // Paso 10: Encolar job en Hangfire
+            // Paso 10: Encolar UN SOLO job en Hangfire que procesará TODOS los webhooks en paralelo
+            // IMPORTANTE: Solo se crea UN job de Hangfire. Los webhooks se procesan en paralelo
+            // DENTRO de este job usando TPL (Parallel.ForEachAsync). NO se crean jobs adicionales por cada webhook.
             string hangfireJobId;
             try
             {
@@ -314,7 +316,7 @@ public class BatchSincronizacionProcesosController : ControllerBase
                     service.ExecuteBatchSyncWithHangfireAsync(syncControl.SyncControlId, processId, dto.ProcessType, dto.IdCarga));
 
                 _logger.LogInformation(
-                    "✅ [BATCH_SYNC] Job encolado en Hangfire. JobId: {HangfireJobId}, ProcessId: {ProcessId}",
+                    "✅ [BATCH_SYNC] UN SOLO job de Hangfire encolado | HangfireJobId: {HangfireJobId}, ProcessId: {ProcessId} | Este job procesará TODOS los webhooks en paralelo dentro del mismo job usando TPL",
                     hangfireJobId, processId);
 
                 // Registrar el lock para que Hangfire pueda acceder a él

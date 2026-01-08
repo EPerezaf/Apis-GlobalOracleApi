@@ -20,7 +20,18 @@ public class WebhookSyncService : IWebhookSyncService
         ILogger<WebhookSyncService> logger)
     {
         _httpClient = httpClientFactory.CreateClient();
-        _httpClient.Timeout = TimeSpan.FromMinutes(5); // Timeout de 5 minutos
+        
+        // ⚙️ Configuración de Timeout por webhook
+        // Timeout de 5 minutos por webhook individual
+        // - Permite manejar webhooks que pueden tardar en procesar grandes catálogos
+        // - Evita que un webhook lento bloquee el procesamiento de otros
+        // - Con procesamiento paralelo (5-10 simultáneos), el timeout no bloquea otros webhooks
+        // TODO: Considerar implementar Circuit Breaker (Polly) para:
+        //   - Detectar webhooks fallidos repetidamente
+        //   - Abrir el circuito y evitar llamadas durante un período
+        //   - Implementar backoff exponencial para reintentos
+        _httpClient.Timeout = TimeSpan.FromMinutes(5);
+        
         _logger = logger;
     }
 

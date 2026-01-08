@@ -5,6 +5,8 @@ using Shared.Security;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace GM.DealerSync.Application.Services;
 
@@ -20,10 +22,18 @@ public class BatchSyncJobService : IBatchSyncJobService
     private readonly IWebhookSyncService _webhookSyncService;
     private readonly IEventoCargaSnapshotDealerRepository _eventoCargaSnapshotDealerRepository;
     private readonly ISincCargaProcesoDealerRepository _sincCargaProcesoDealerRepository;
+    private readonly IPayloadGeneratorService _payloadGeneratorService;
     private const int SIMULATED_PROCESSING_SECONDS = 600; // 10 minutos de procesamiento
     private const int LOG_INTERVAL_SECONDS = 5; // Log cada 5 segundos
     private const int LOCK_RENEWAL_INTERVAL_SECONDS = 30; // Renovar lock cada 30 segundos (heartbeat)
     private const int LOCK_RENEWAL_EXPIRY_SECONDS = 600; // Renovar por 10 minutos adicionales (el lock nunca expirará mientras el proceso esté activo)
+    
+    // ⚙️ Configuración de Procesamiento Paralelo (TPL)
+    // Rango recomendado: 5-10 webhooks simultáneos
+    // - Mínimo 5: Mejora significativa de performance vs secuencial
+    // - Máximo 10: Balance entre throughput y estabilidad de red/BD
+    // - Evita saturar la red, sobrecargar el backend y caídas en cascada
+    private const int MAX_PARALLEL_WEBHOOKS = 5; // Máximo de webhooks procesados en paralelo usando TPL (Pool de tareas asíncronas)
     
     // Almacenar locks por processType para que Hangfire pueda acceder a ellos
     private static readonly ConcurrentDictionary<string, IRedisLockWrapper> _activeLocks = new();
@@ -35,7 +45,8 @@ public class BatchSyncJobService : IBatchSyncJobService
         IDistributedLockService distributedLockService,
         IWebhookSyncService webhookSyncService,
         IEventoCargaSnapshotDealerRepository eventoCargaSnapshotDealerRepository,
-        ISincCargaProcesoDealerRepository sincCargaProcesoDealerRepository)
+        ISincCargaProcesoDealerRepository sincCargaProcesoDealerRepository,
+        IPayloadGeneratorService payloadGeneratorService)
     {
         _logger = logger;
         _syncControlRepository = syncControlRepository;
@@ -44,6 +55,7 @@ public class BatchSyncJobService : IBatchSyncJobService
         _webhookSyncService = webhookSyncService;
         _eventoCargaSnapshotDealerRepository = eventoCargaSnapshotDealerRepository;
         _sincCargaProcesoDealerRepository = sincCargaProcesoDealerRepository;
+        _payloadGeneratorService = payloadGeneratorService;
     }
 
     /// <inheritdoc />
@@ -444,6 +456,71 @@ public class BatchSyncJobService : IBatchSyncJobService
             // Ejecutar el proceso con el lock obtenido
             if (dealersActivos != null && dealersActivos.Any())
             {
+                // Obtener información del proceso para generar payload
+                var eventoInfo = await _dealerRepository.GetEventoCargaProcesoInfoAsync(processType, idCarga);
+                if (!eventoInfo.HasValue)
+                {
+                    _logger.LogError(
+                        "❌ [BATCH_SYNC] No se pudo obtener información del proceso para generar payload. ProcessType: {ProcessType}, IdCarga: {IdCarga}",
+                        processType, idCarga);
+                    await _syncControlRepository.UpdateStatusToFailedAsync(
+                        syncControl.SyncControlId,
+                        "No se pudo obtener información del proceso para generar payload",
+                        null,
+                        "SYSTEM");
+                    lockWrapper?.Dispose();
+                    return;
+                }
+
+                // Generar payload ANTES del procesamiento paralelo (una sola vez)
+                Console.WriteLine("");
+                Console.WriteLine($"════════════════════════════════════════════════════════════");
+                Console.WriteLine($"📦 [PAYLOAD] Generando payload para ProcessType: {processType}...");
+                Console.WriteLine($"════════════════════════════════════════════════════════════");
+                Console.Out.Flush();
+
+                var payload = await _payloadGeneratorService.GeneratePayloadAsync(
+                    processType,
+                    syncControl.EventoCargaProcesoId.Value,
+                    idCarga,
+                    eventoInfo.Value.FechaCarga,
+                    dealersActivos.Count);
+
+                Console.WriteLine($"✅ [PAYLOAD] Payload generado exitosamente - Listo para enviar a webhooks");
+                Console.WriteLine("");
+                
+                // Imprimir una parte del payload para visualización
+                try
+                {
+                    var payloadJson = JsonSerializer.Serialize(payload, new JsonSerializerOptions 
+                    { 
+                        WriteIndented = true,
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    });
+                    
+                    // Limitar a las primeras 2000 caracteres para no saturar la consola
+                    var payloadPreview = payloadJson.Length > 2000 
+                        ? payloadJson.Substring(0, 2000) + "\n... (payload truncado para visualización) ..." 
+                        : payloadJson;
+                    
+                    Console.WriteLine($"📄 [PAYLOAD] Vista previa del payload generado:");
+                    Console.WriteLine($"───────────────────────────────────────────────────────────────");
+                    Console.WriteLine(payloadPreview);
+                    Console.WriteLine($"───────────────────────────────────────────────────────────────");
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"⚠️ [PAYLOAD] Error al serializar payload para visualización: {ex.Message}");
+                }
+                
+                Console.WriteLine("");
+                Console.WriteLine($"════════════════════════════════════════════════════════════");
+                Console.Out.Flush();
+
+                _logger.LogInformation(
+                    "✅ [BATCH_SYNC] Payload generado exitosamente para ProcessType: {ProcessType}, EventoCargaProcesoId: {EventoCargaProcesoId}",
+                    processType, syncControl.EventoCargaProcesoId.Value);
+
                 await ProcessDealersWebhooksAsync(
                     processId,
                     processType,
@@ -451,7 +528,8 @@ public class BatchSyncJobService : IBatchSyncJobService
                     syncControl.SyncControlId,
                     syncControl.EventoCargaProcesoId.Value,
                     dealersActivos,
-                    lockWrapper);
+                    lockWrapper,
+                    payload);
             }
             else
             {
@@ -514,7 +592,7 @@ public class BatchSyncJobService : IBatchSyncJobService
     }
     
     /// <summary>
-    /// Procesa los webhooks de los dealers agrupados por UrlWebhook
+    /// Procesa los webhooks de los dealers agrupados por UrlWebhook usando TPL (Task Parallel Library)
     /// </summary>
     private async Task ProcessDealersWebhooksAsync(
         string processId,
@@ -523,110 +601,133 @@ public class BatchSyncJobService : IBatchSyncJobService
         int syncControlId,
         int eventoCargaProcesoId,
         List<Dealer> dealersAgrupados,
-        IRedisLockWrapper lockWrapper)
+        IRedisLockWrapper lockWrapper,
+        object payload)
     {
+        // Contadores thread-safe usando Interlocked
         var webhooksProcesados = 0;
-        var webhooksOmitidos = 0;
         var webhooksFallidos = 0;
         
-        // Contadores de dealers
+        // Contadores de dealers thread-safe
         var dealersSincronizados = 0;
         var dealersConError = 0;
 
+        // Obtener conteo base de registros sincronizados ANTES del procesamiento paralelo
+        var registrosSincronizadosBase = await _sincCargaProcesoDealerRepository
+            .GetCountByEventoCargaProcesoIdAsync(eventoCargaProcesoId);
+
+        // Contador para RegistrosSincronizados (thread-safe)
+        var contadorRegistrosSincronizados = registrosSincronizadosBase;
+        var lockContador = new object();
+
         Console.WriteLine("");
         Console.WriteLine($"════════════════════════════════════════════════════════════");
-        Console.WriteLine($"🔄 [BATCH_SYNC] Iniciando procesamiento de {dealersAgrupados.Count} webhooks...");
+        Console.WriteLine($"🔄 [BATCH_SYNC] Iniciando procesamiento PARALELO de {dealersAgrupados.Count} webhooks...");
+        Console.WriteLine($"⚡ [TPL] Usando Task Parallel Library (Pool de tareas asíncronas)");
+        Console.WriteLine($"⚡ [CONCURRENCIA] Límite: {MAX_PARALLEL_WEBHOOKS} webhooks simultáneos (rango recomendado: 5-10)");
+        Console.WriteLine($"⚡ [TIMEOUT] Timeout por webhook: 5 minutos");
+        Console.WriteLine($"📝 [NOTA] Todos los webhooks se procesan DENTRO de un SOLO job de Hangfire (no se crean jobs separados)");
         Console.WriteLine($"════════════════════════════════════════════════════════════");
         Console.Out.Flush();
+        
+        _logger.LogInformation(
+            "⚡ [BATCH_SYNC] Iniciando procesamiento PARALELO de {TotalWebhooks} webhooks dentro de UN SOLO job de Hangfire usando TPL. Límite: {MaxParallel} simultáneos",
+            dealersAgrupados.Count, MAX_PARALLEL_WEBHOOKS);
 
-        var webhookNumero = 0;
-        foreach (var dealerGrupo in dealersAgrupados)
+        // Crear lista con índice para tracking en logs
+        var webhooksConIndice = dealersAgrupados
+            .Select((dealer, index) => new { Dealer = dealer, Index = index + 1, Total = dealersAgrupados.Count })
+            .ToList();
+
+        // Procesar webhooks en paralelo usando Parallel.ForEachAsync (TPL)
+        var parallelOptions = new ParallelOptions
         {
-            webhookNumero++;
+            MaxDegreeOfParallelism = MAX_PARALLEL_WEBHOOKS
+        };
+
+        await Parallel.ForEachAsync(
+            webhooksConIndice,
+            parallelOptions,
+            async (webhookItem, cancellationToken) =>
+        {
+            var dealerGrupo = webhookItem.Dealer;
+            var webhookNumero = webhookItem.Index;
+            var totalWebhooks = webhookItem.Total;
             List<EventoCargaSnapshotDealer>? dealersIndividuales = null;
             
             try
             {
-                Console.WriteLine("");
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.WriteLine($"🌐 [WEBHOOK] Webhook {webhookNumero}/{dealersAgrupados.Count}: Procesando webhook");
-                Console.WriteLine($"   URL: {dealerGrupo.UrlWebhook}");
-                Console.WriteLine($"   DealerBACs: {dealerGrupo.DealerBac}");
-                Console.WriteLine($"   Estado actual: {dealerGrupo.EstadoWebhook ?? "N/A"}");
-                Console.Out.Flush();
+                lock (lockContador)
+                {
+                    Console.WriteLine("");
+                    Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Console.WriteLine($"🌐 [WEBHOOK] Webhook {webhookNumero}/{totalWebhooks}: Procesando webhook (PARALELO)");
+                    Console.WriteLine($"   URL: {dealerGrupo.UrlWebhook}");
+                    Console.WriteLine($"   DealerBACs: {dealerGrupo.DealerBac}");
+                    Console.WriteLine($"   Estado actual: {dealerGrupo.EstadoWebhook ?? "N/A"}");
+                    Console.Out.Flush();
+                }
 
                 // Obtener todos los dealers individuales de este webhook
-                Console.WriteLine($"   📋 Obteniendo dealers individuales del webhook...");
-                Console.Out.Flush();
-                
                 dealersIndividuales = await _eventoCargaSnapshotDealerRepository
                     .GetDealersByUrlWebhookAsync(dealerGrupo.UrlWebhook, eventoCargaProcesoId);
 
                 if (!dealersIndividuales.Any())
                 {
-                    Console.WriteLine($"   ⚠️  No se encontraron dealers individuales para este webhook");
-                    Console.Out.Flush();
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"   ⚠️  No se encontraron dealers individuales para este webhook");
+                        Console.Out.Flush();
+                    }
                     _logger.LogWarning(
                         "⚠️ [BATCH_SYNC] No se encontraron dealers individuales para UrlWebhook: {UrlWebhook}",
                         dealerGrupo.UrlWebhook);
-                    continue;
+                    return;
                 }
 
-                Console.WriteLine($"   ✅ Se encontraron {dealersIndividuales.Count} dealers individuales:");
-                foreach (var dealer in dealersIndividuales)
+                lock (lockContador)
                 {
-                    Console.WriteLine($"      • DealerBAC: {dealer.DealerBac} | Nombre: {dealer.NombreDealer} | DMS: {dealer.Dms}");
+                    Console.WriteLine($"   ✅ Se encontraron {dealersIndividuales.Count} dealers individuales");
+                    Console.Out.Flush();
                 }
-                Console.Out.Flush();
 
-                // Construir payload del webhook
-                Console.WriteLine($"   📦 Construyendo payload del webhook...");
-                Console.Out.Flush();
-                
-                var webhookPayload = new
+                // Enviar webhook con el payload pre-generado (ya incluye procesodetalle y listaProductos/listaCampanias)
+                lock (lockContador)
                 {
-                    processType = processType,
-                    idCarga = idCarga,
-                    fechaCarga = DateTimeHelper.GetMexicoDateTime(),
-                    dealers = dealersIndividuales.Select(d => new
-                    {
-                        dealerBac = d.DealerBac,
-                        nombreDealer = d.NombreDealer,
-                        dms = d.Dms
-                    }).ToList()
-                };
-
-                // Enviar webhook
-                Console.WriteLine($"   🚀 Enviando webhook POST a: {dealerGrupo.UrlWebhook}...");
-                Console.Out.Flush();
+                    Console.WriteLine($"   🚀 Enviando webhook POST a: {dealerGrupo.UrlWebhook}...");
+                    Console.WriteLine($"   📦 Usando payload pre-generado (no se consulta BD en cada webhook)");
+                    Console.Out.Flush();
+                }
                 
                 var webhookResult = await _webhookSyncService.SendWebhookAsync(
                     dealerGrupo.UrlWebhook,
                     dealerGrupo.SecretKey,
-                    webhookPayload);
+                    payload);
 
                 if (webhookResult.IsSuccess && !string.IsNullOrWhiteSpace(webhookResult.AckToken))
                 {
                     // ÉXITO: Guardar registros y actualizar estado
-                    Console.WriteLine($"   ✅ [WEBHOOK] Respuesta recibida: StatusCode {webhookResult.StatusCode} - Sincronización EXITOSA");
-                    Console.WriteLine($"   🎫 ACK Token: {webhookResult.AckToken}");
-                    Console.WriteLine($"   💾 Guardando registros en base de datos...");
-                    Console.Out.Flush();
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"   ✅ [WEBHOOK] Respuesta recibida: StatusCode {webhookResult.StatusCode} - Sincronización EXITOSA");
+                        Console.WriteLine($"   🎫 ACK Token: {webhookResult.AckToken}");
+                        Console.WriteLine($"   💾 Guardando registros en base de datos...");
+                        Console.Out.Flush();
+                    }
 
-                    // Obtener conteo de registros sincronizados antes de insertar
-                    var registrosSincronizadosBase = await _sincCargaProcesoDealerRepository
-                        .GetCountByEventoCargaProcesoIdAsync(eventoCargaProcesoId);
-
-                    Console.WriteLine($"      📊 Registros sincronizados base: {registrosSincronizadosBase}");
-                    Console.Out.Flush();
-
-                    // Insertar registro por cada dealer individual
+                    // Insertar registro por cada dealer individual (thread-safe con lock)
                     var contador = 0;
                     foreach (var dealer in dealersIndividuales)
                     {
                         contador++;
-                        Console.WriteLine($"      💾 [{contador}/{dealersIndividuales.Count}] Insertando registro para DealerBAC: {dealer.DealerBac}...");
-                        Console.Out.Flush();
+                        int registroSincronizadoActual;
+                        
+                        // Incrementar contador de manera thread-safe
+                        lock (lockContador)
+                        {
+                            contadorRegistrosSincronizados++;
+                            registroSincronizadoActual = contadorRegistrosSincronizados;
+                        }
                         
                         var sincRegistro = new SincCargaProcesoDealer
                         {
@@ -635,31 +736,36 @@ public class BatchSyncJobService : IBatchSyncJobService
                             DealerBac = dealer.DealerBac,
                             NombreDealer = dealer.NombreDealer,
                             FechaSincronizacion = DateTimeHelper.GetMexicoDateTime(),
-                            RegistrosSincronizados = registrosSincronizadosBase + contador,
+                            RegistrosSincronizados = registroSincronizadoActual,
                             TokenConfirmacion = webhookResult.AckToken
                         };
 
                         await _sincCargaProcesoDealerRepository.CreateAsync(sincRegistro, "SYSTEM");
-                        Console.WriteLine($"         ✅ Registro creado exitosamente (ID: {sincRegistro.SincCargaProcesoDealerId})");
-                        Console.Out.Flush();
+                        
+                        lock (lockContador)
+                        {
+                            Console.WriteLine($"      ✅ [{contador}/{dealersIndividuales.Count}] Registro creado para DealerBAC: {dealer.DealerBac} (ID: {sincRegistro.SincCargaProcesoDealerId})");
+                            Console.Out.Flush();
+                        }
                     }
 
                     // Actualizar estado de dealers a EXITOSO
-                    Console.WriteLine($"   🔄 Actualizando estado de {dealersIndividuales.Count} dealers a EXITOSO...");
-                    Console.Out.Flush();
-                    
                     await _eventoCargaSnapshotDealerRepository.UpdateWebhookStatusToExitosoAsync(
                         dealerGrupo.UrlWebhook,
                         eventoCargaProcesoId,
                         webhookResult.AckToken,
                         "SYSTEM");
 
-                    Console.WriteLine($"      ✅ Estado actualizado a EXITOSO");
-                    Console.WriteLine($"   ✅ Webhook {webhookNumero} completado exitosamente: {dealersIndividuales.Count} dealers sincronizados");
-                    Console.Out.Flush();
+                    // Incrementar contadores de manera thread-safe
+                    Interlocked.Increment(ref webhooksProcesados);
+                    Interlocked.Add(ref dealersSincronizados, dealersIndividuales.Count);
 
-                    webhooksProcesados++;
-                    dealersSincronizados += dealersIndividuales.Count;
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"      ✅ Estado actualizado a EXITOSO");
+                        Console.WriteLine($"   ✅ Webhook {webhookNumero} completado exitosamente: {dealersIndividuales.Count} dealers sincronizados");
+                        Console.Out.Flush();
+                    }
 
                     _logger.LogInformation(
                         "✅ [BATCH_SYNC] Webhook procesado exitosamente - UrlWebhook: {UrlWebhook}, Dealers: {Count}",
@@ -670,53 +776,63 @@ public class BatchSyncJobService : IBatchSyncJobService
                     // FALLO: Actualizar estado de dealers a FALLIDO
                     var errorMessage = webhookResult.ErrorMessage ?? "Error desconocido";
                     
-                    Console.WriteLine($"   ❌ [WEBHOOK] Sincronización FALLIDA");
-                    Console.WriteLine($"      StatusCode: {webhookResult.StatusCode}");
-                    Console.WriteLine($"      Error: {errorMessage}");
-                    if (webhookResult.IsAuthError)
+                    lock (lockContador)
                     {
-                        Console.WriteLine($"      Tipo: Error de Autenticación (401/403)");
+                        Console.WriteLine($"   ❌ [WEBHOOK] Sincronización FALLIDA");
+                        Console.WriteLine($"      StatusCode: {webhookResult.StatusCode}");
+                        Console.WriteLine($"      Error: {errorMessage}");
+                        if (webhookResult.IsAuthError)
+                        {
+                            Console.WriteLine($"      Tipo: Error de Autenticación (401/403)");
+                        }
+                        else if (webhookResult.IsConnectionError)
+                        {
+                            Console.WriteLine($"      Tipo: Error de Conexión");
+                        }
+                        Console.Out.Flush();
                     }
-                    else if (webhookResult.IsConnectionError)
-                    {
-                        Console.WriteLine($"      Tipo: Error de Conexión");
-                    }
-                    Console.Out.Flush();
 
-                    Console.WriteLine($"   🔄 Actualizando estado de {dealersIndividuales.Count} dealers a FALLIDO...");
-                    Console.Out.Flush();
-                    
                     await _eventoCargaSnapshotDealerRepository.UpdateWebhookStatusToFallidoAsync(
                         dealerGrupo.UrlWebhook,
                         eventoCargaProcesoId,
                         errorMessage,
                         "SYSTEM");
 
-                    Console.WriteLine($"      ✅ Estado actualizado a FALLIDO");
-                    Console.WriteLine($"   ❌ Webhook {webhookNumero} falló: {dealersIndividuales.Count} dealers marcados como FALLIDO");
-                    Console.Out.Flush();
+                    // Incrementar contadores de manera thread-safe
+                    Interlocked.Increment(ref webhooksFallidos);
+                    Interlocked.Add(ref dealersConError, dealersIndividuales.Count);
 
-                    webhooksFallidos++;
-                    dealersConError += dealersIndividuales.Count;
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"      ✅ Estado actualizado a FALLIDO");
+                        Console.WriteLine($"   ❌ Webhook {webhookNumero} falló: {dealersIndividuales.Count} dealers marcados como FALLIDO");
+                        Console.Out.Flush();
+                    }
 
                     _logger.LogWarning(
                         "⚠️ [BATCH_SYNC] Webhook procesado con error - UrlWebhook: {UrlWebhook}, Error: {ErrorMessage}, Dealers: {Count}",
                         dealerGrupo.UrlWebhook, errorMessage, dealersIndividuales.Count);
                 }
                 
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.Out.Flush();
+                lock (lockContador)
+                {
+                    Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                    Console.Out.Flush();
+                }
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"   ❌ [ERROR] Excepción inesperada al procesar webhook:");
-                Console.WriteLine($"      Tipo: {ex.GetType().Name}");
-                Console.WriteLine($"      Mensaje: {ex.Message}");
-                var stackTracePreview = ex.StackTrace != null && ex.StackTrace.Length > 200 
-                    ? ex.StackTrace.Substring(0, 200) + "..." 
-                    : ex.StackTrace ?? "N/A";
-                Console.WriteLine($"      StackTrace: {stackTracePreview}");
-                Console.Out.Flush();
+                lock (lockContador)
+                {
+                    Console.WriteLine($"   ❌ [ERROR] Excepción inesperada al procesar webhook:");
+                    Console.WriteLine($"      Tipo: {ex.GetType().Name}");
+                    Console.WriteLine($"      Mensaje: {ex.Message}");
+                    var stackTracePreview = ex.StackTrace != null && ex.StackTrace.Length > 200 
+                        ? ex.StackTrace.Substring(0, 200) + "..." 
+                        : ex.StackTrace ?? "N/A";
+                    Console.WriteLine($"      StackTrace: {stackTracePreview}");
+                    Console.Out.Flush();
+                }
                 
                 _logger.LogError(ex,
                     "❌ [BATCH_SYNC] Error al procesar webhook - UrlWebhook: {UrlWebhook}",
@@ -725,46 +841,61 @@ public class BatchSyncJobService : IBatchSyncJobService
                 // Actualizar estado a FALLIDO en caso de excepción
                 try
                 {
-                    Console.WriteLine($"   🔄 Intentando actualizar estado a FALLIDO...");
-                    Console.Out.Flush();
-                    
                     await _eventoCargaSnapshotDealerRepository.UpdateWebhookStatusToFallidoAsync(
                         dealerGrupo.UrlWebhook,
                         eventoCargaProcesoId,
                         $"Error inesperado: {ex.Message}",
                         "SYSTEM");
                     
-                    Console.WriteLine($"      ✅ Estado actualizado a FALLIDO");
-                    Console.Out.Flush();
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"      ✅ Estado actualizado a FALLIDO");
+                        Console.Out.Flush();
+                    }
                 }
                 catch (Exception updateEx)
                 {
-                    Console.WriteLine($"      ❌ Error al actualizar estado: {updateEx.Message}");
-                    Console.Out.Flush();
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"      ❌ Error al actualizar estado: {updateEx.Message}");
+                        Console.Out.Flush();
+                    }
                     
                     _logger.LogError(updateEx,
                         "❌ [BATCH_SYNC] Error al actualizar estado a FALLIDO - UrlWebhook: {UrlWebhook}",
                         dealerGrupo.UrlWebhook);
                 }
 
-                Console.WriteLine($"   ❌ Webhook {webhookNumero} falló por excepción");
-                
                 // Contar dealers con error si se pudieron obtener antes del error
                 if (dealersIndividuales != null && dealersIndividuales.Any())
                 {
-                    dealersConError += dealersIndividuales.Count;
-                    Console.WriteLine($"   ⚠️  {dealersIndividuales.Count} dealers marcados como con error");
+                    Interlocked.Add(ref dealersConError, dealersIndividuales.Count);
+                    
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"   ❌ Webhook {webhookNumero} falló por excepción - {dealersIndividuales.Count} dealers marcados como con error");
+                        Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Console.Out.Flush();
+                    }
                 }
-                
-                Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
-                Console.Out.Flush();
+                else
+                {
+                    lock (lockContador)
+                    {
+                        Console.WriteLine($"   ❌ Webhook {webhookNumero} falló por excepción");
+                        Console.WriteLine($"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
+                        Console.Out.Flush();
+                    }
+                }
 
-                webhooksFallidos++;
+                // Incrementar contador de webhooks fallidos
+                Interlocked.Increment(ref webhooksFallidos);
             }
-        }
+        });
 
         // Calcular webhooks omitidos (total - procesados - fallidos)
-        webhooksOmitidos = Math.Max(0, dealersAgrupados.Count - webhooksProcesados - webhooksFallidos);
+
+        var webhooksOmitidos = Math.Max(0, dealersAgrupados.Count - webhooksProcesados - webhooksFallidos);
 
         // Obtener estadísticas de dealers
         var totalDealersCount = await _sincCargaProcesoDealerRepository

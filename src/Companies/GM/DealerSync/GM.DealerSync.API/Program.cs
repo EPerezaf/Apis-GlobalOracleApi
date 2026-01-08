@@ -320,10 +320,15 @@ builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.ISyncControlRepositor
 builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IDealerRepository, GM.DealerSync.Infrastructure.Repositories.DealerRepository>();
 builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IEventoCargaSnapshotDealerRepository, GM.DealerSync.Infrastructure.Repositories.EventoCargaSnapshotDealerRepository>();
 builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.ISincCargaProcesoDealerRepository, GM.DealerSync.Infrastructure.Repositories.SincCargaProcesoDealerRepository>();
-Log.Information("✅ Repositorios registrados (SyncControlRepository, DealerRepository, EventoCargaSnapshotDealerRepository, SincCargaProcesoDealerRepository)");
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.IProductoPayloadRepository, GM.DealerSync.Infrastructure.Repositories.ProductoPayloadRepository>();
+builder.Services.AddScoped<GM.DealerSync.Domain.Interfaces.ICampaignPayloadRepository, GM.DealerSync.Infrastructure.Repositories.CampaignPayloadRepository>();
+Log.Information("✅ Repositorios registrados (SyncControlRepository, DealerRepository, EventoCargaSnapshotDealerRepository, SincCargaProcesoDealerRepository, ProductoPayloadRepository, CampaignPayloadRepository)");
 
 builder.Services.AddScoped<GM.DealerSync.Application.Services.IWebhookSyncService, GM.DealerSync.Application.Services.WebhookSyncService>();
 Log.Information("✅ WebhookSyncService registrado");
+
+builder.Services.AddScoped<GM.DealerSync.Application.Services.IPayloadGeneratorService, GM.DealerSync.Application.Services.PayloadGeneratorService>();
+Log.Information("✅ PayloadGeneratorService registrado");
 
 builder.Services.AddScoped<GM.DealerSync.Application.Services.IBatchSyncJobService, GM.DealerSync.Application.Services.BatchSyncJobService>();
 Log.Information("✅ BatchSyncJobService registrado");
