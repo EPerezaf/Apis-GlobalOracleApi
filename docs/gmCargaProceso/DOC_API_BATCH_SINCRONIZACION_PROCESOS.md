@@ -631,7 +631,7 @@ El sistema genera el payload completo **una sola vez** antes de iniciar el proce
 1. **Obtención de dealers activos**: Se consultan los dealers agrupados por `UrlWebhook` desde `CO_EVENTOSCARGASNAPSHOTDEALERS`
 2. **Generación del payload**: Según el `processType`, se consulta la base de datos una sola vez:
    - **ProductList**: Consulta `CO_GM_LISTAPRODUCTOS` y genera `listaProductos`
-   - **CampaignList**: Consulta `LABGDMS.CO_CAMPAIGNCATALOG` y genera `listaCampanias`
+   - **CampaignList**: Consulta `AUTOS.CO_GM_CAMPAIGNCATALOG` y genera `listaCampanias`
 3. **Construcción del procesodetalle**: Se incluye información del proceso (ID, fecha, registros, dealers totales)
 4. **Reutilización**: El payload generado se reutiliza para todos los webhooks durante el procesamiento paralelo
 

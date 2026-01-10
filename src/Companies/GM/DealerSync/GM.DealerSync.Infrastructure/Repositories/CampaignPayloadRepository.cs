@@ -7,7 +7,7 @@ using Shared.Infrastructure;
 namespace GM.DealerSync.Infrastructure.Repositories;
 
 /// <summary>
-/// Repository para obtener campañas desde CO_CAMPAIGNCATALOG para generar payload
+/// Repository para obtener campañas desde CO_GM_CAMPAIGNCATALOG para generar payload
 /// </summary>
 public class CampaignPayloadRepository : ICampaignPayloadRepository
 {
@@ -35,7 +35,7 @@ public class CampaignPayloadRepository : ICampaignPayloadRepository
                 COCC_LEADSOURCE as LeadSource,
                 COCC_LEADSOURCEDETAILS as LeadSourceDetails,
                 COCC_STATUS as Status
-            FROM LABGDMS.CO_CAMPAIGNCATALOG
+            FROM AUTOS.CO_GM_CAMPAIGNCATALOG
             ORDER BY COCC_CAMPANIAID";
 
         try

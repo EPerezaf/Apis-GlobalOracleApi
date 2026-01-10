@@ -54,7 +54,7 @@ public class CampaignRepository : ICampaignRepository
             }
 
             // Obtener total de registros
-            var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_CAMPAIGNCATALOG {whereClause}";
+            var countSql = $"SELECT COUNT(*) FROM AUTOS.CO_GM_CAMPAIGNCATALOG {whereClause}";
             var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
             if (totalRecords == 0)
@@ -84,7 +84,7 @@ public class CampaignRepository : ICampaignRepository
                         FECHAMODIFICACION as FechaModificacion,
                         USUARIOMODIFICACION as UsuarioModificacion,
                         ROW_NUMBER() OVER (ORDER BY COCC_CAMPANIAID) AS RNUM
-                    FROM LABGDMS.CO_CAMPAIGNCATALOG
+                    FROM AUTOS.CO_GM_CAMPAIGNCATALOG
                     {whereClause}
 
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
@@ -140,7 +140,7 @@ public class CampaignRepository : ICampaignRepository
                 parameters.Add("name", name);
             }
 
-            var sql = $"SELECT COUNT(*) FROM LABGDMS.CO_CAMPAIGNCATALOG {whereClause}";
+            var sql = $"SELECT COUNT(*) FROM AUTOS.CO_GM_CAMPAIGNCATALOG {whereClause}";
             var count = await connection.ExecuteScalarAsync<int>(sql, parameters);
 
             return count;
@@ -169,7 +169,7 @@ public class CampaignRepository : ICampaignRepository
 
             var sql = @"
                 SELECT COUNT(*) 
-                FROM LABGDMS.CO_CAMPAIGNCATALOG 
+                FROM AUTOS.CO_GM_CAMPAIGNCATALOG 
                 WHERE COCC_ID = :id";
 
             var parameters = new DynamicParameters();
@@ -200,14 +200,14 @@ public class CampaignRepository : ICampaignRepository
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
             var sql = @"
-                INSERT INTO LABGDMS.CO_CAMPAIGNCATALOG (
+                INSERT INTO AUTOS.CO_GM_CAMPAIGNCATALOG (
                     COCC_SOURCECODEID, COCC_ID, COCC_NAME, COCC_RECORDTYPEID,
                     COCC_LEADRECORDTYPE, COCC_LEADENQUIRYTYPE, COCC_LEADSOURCE, COCC_LEADSOURCEDETAILS, COCC_STATUS,
-                    FECHAALTA, USUARIOALTA
+                    FECHAALTA, USUARIOALTA, FECHAMODIFICACION, USUARIOMODIFICACION
                 ) VALUES (
                     :sourceCodeId, :id, :name, :recordTypeId,
                     :leadRecordType, :leadEnquiryType, :leadSource, :leadSourceDetails, :status,
-                    SYSDATE, :usuarioAlta
+                    SYSDATE, :usuarioAlta, SYSDATE, :usuarioModificacion
                 )";
 
             var parameters = new DynamicParameters();
@@ -221,6 +221,7 @@ public class CampaignRepository : ICampaignRepository
             parameters.Add("leadSourceDetails", campaign.LeadSourceDetails);
             parameters.Add("status", campaign.Status);
             parameters.Add("usuarioAlta", currentUser ?? "SYSTEM");
+            parameters.Add("usuarioModificacion", currentUser ?? "SYSTEM");
 
             var rowsAffected = await connection.ExecuteAsync(sql, parameters);
             return rowsAffected;
@@ -257,14 +258,14 @@ public class CampaignRepository : ICampaignRepository
             try
             {
                 var sql = @"
-                    INSERT INTO LABGDMS.CO_CAMPAIGNCATALOG (
+                    INSERT INTO AUTOS.CO_GM_CAMPAIGNCATALOG (
                         COCC_SOURCECODEID, COCC_ID, COCC_NAME, COCC_RECORDTYPEID,
                         COCC_LEADRECORDTYPE, COCC_LEADENQUIRYTYPE, COCC_LEADSOURCE, COCC_LEADSOURCEDETAILS, COCC_STATUS,
-                        FECHAALTA, USUARIOALTA
+                        FECHAALTA, USUARIOALTA, FECHAMODIFICACION, USUARIOMODIFICACION
                     ) VALUES (
                         :sourceCodeId, :id, :name, :recordTypeId,
                     :leadRecordType, :leadEnquiryType, :leadSource, :leadSourceDetails, :status,
-                    SYSDATE, :usuarioAlta
+                    SYSDATE, :usuarioAlta, SYSDATE, :usuarioModificacion
                     )";
 
                 int totalInserted = 0;
@@ -281,6 +282,7 @@ public class CampaignRepository : ICampaignRepository
                     parameters.Add("leadSourceDetails", campaign.LeadSourceDetails);
                     parameters.Add("status", campaign.Status);
                     parameters.Add("usuarioAlta", currentUser ?? "SYSTEM");
+                    parameters.Add("usuarioModificacion", currentUser ?? "SYSTEM");
                     await connection.ExecuteAsync(sql, parameters, transaction);
                     totalInserted++;
                 }
@@ -317,7 +319,7 @@ public class CampaignRepository : ICampaignRepository
         {
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
-            var sql = "DELETE FROM LABGDMS.CO_CAMPAIGNCATALOG";
+            var sql = "DELETE FROM AUTOS.CO_GM_CAMPAIGNCATALOG";
             var rowsAffected = await connection.ExecuteAsync(sql);
 
             _logger.LogInformation("[{CorrelationId}] ✅ [REPOSITORY] DELETE completado - {Rows} filas eliminadas",
