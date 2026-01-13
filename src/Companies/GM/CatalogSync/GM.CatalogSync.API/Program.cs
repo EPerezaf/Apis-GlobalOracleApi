@@ -275,6 +275,10 @@ builder.Services.AddScoped<IFotoDealersCargaArchivosSincService, FotoDealersCarg
 builder.Services.AddScoped<ICampañaRepository, CampañaRepository>();
 builder.Services.AddScoped<ICampañaService, CampañaService>();
 
+//Asignacion 
+builder.Services.AddScoped<IAsignacionRepository, AsignacionRepository>();
+builder.Services.AddScoped<IAsignacionService, AsignacionService>();
+
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
 builder.Services.AddSingleton<PerformanceMonitor>();
