@@ -9,7 +9,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.Empleados;
 
 [ApiController]
-[Route("api/v1/gm/empleados/obtener-empleados")]
+[Route("api/v1/jt/empleados/obtener-empleados")]
 [Produces("application/json")]
 [Tags("Empleados")]
 public class GetEmpleadosController : ControllerBase
