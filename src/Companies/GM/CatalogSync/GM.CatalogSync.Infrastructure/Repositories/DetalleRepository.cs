@@ -66,7 +66,7 @@ public class DetalleRepository : IDetalleRepository
                 parameters.Add("rfc", rfc);
             }
             
-            whereClause += " AND EMPRESAID = :currentUser";
+            //whereClause += " AND EMPRESAID = :currentUser";
 
             //Obtener total de registros 
             var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_VDISTRIBUIDORES {whereClause}";

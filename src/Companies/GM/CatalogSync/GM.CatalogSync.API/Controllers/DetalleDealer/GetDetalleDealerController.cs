@@ -35,7 +35,7 @@ public class GetDetalleDealerController : ControllerBase
         [FromQuery] string? razonSocial = null,
         [FromQuery] string? rfc = null,
         [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 200)
+        [FromQuery] int pageSize = 2000)
     {
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
