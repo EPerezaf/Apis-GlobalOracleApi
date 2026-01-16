@@ -9,7 +9,6 @@ public interface IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
-        int? noDealer,
         int page,
         int pageSize,
         string currentUser,

@@ -9,7 +9,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.DetallerDealer;
 
 [ApiController]
-[Route("api/v1/jt/detalle-dealer")]
+[Route("api/v1/jt/detalle-dealers")]
 [Produces("application/json")]
 [Tags("DetalleDealer")]
 
@@ -34,7 +34,6 @@ public class GetDetalleDealerController : ControllerBase
         [FromQuery] string? nombre = null,
         [FromQuery] string? razonSocial = null,
         [FromQuery] string? rfc = null,
-        [FromQuery] int? noDealer = null,
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 200)
     {
@@ -46,10 +45,10 @@ public class GetDetalleDealerController : ControllerBase
         {
             _logger.LogInformation(
                 "Inicio de obtenecion de dealers. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parametros: {@Params}",
-                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, noDealer });
+                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc });
 
                 var (data, totalRecords) = await _service.ObtenerDelearAsync(
-                    dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, currentUser, correlationId);
+                    dealerId, nombre, razonSocial, rfc, page, pageSize, currentUser, correlationId);
                 
                 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
