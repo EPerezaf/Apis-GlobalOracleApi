@@ -26,7 +26,6 @@ public class DetalleRepository : IDetalleRepository
         string? nombre,
         string? razonSocial,
         string? rfc,
-        int? noDealer,
         int page,
         int pageSize,
         string currentUser,
@@ -35,8 +34,8 @@ public class DetalleRepository : IDetalleRepository
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, No Dealer: {NoDealer} Pagina: {Page}",
-                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", noDealer.ToString() ?? "Todos", page, page);
+                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, Pagina: {Page}",
+                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", page, page);
 
                 using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -45,35 +44,32 @@ public class DetalleRepository : IDetalleRepository
 
             if (!string.IsNullOrWhiteSpace(dealerId))
             {
-                whereClause += " AND DEALERID = :dealerId";
+                whereClause += " AND DEALER_ID = :dealerId";
                 parameters.Add("dealerId", dealerId);
             }
 
             if (!string.IsNullOrWhiteSpace(nombre))
             {
-                whereClause += " AND CODI_NOMBRE = :nombre";
+                whereClause += " AND NOMBRE = :nombre";
                 parameters.Add("nombre", nombre);
             }
 
             if (!string.IsNullOrWhiteSpace(razonSocial))
             {
-                whereClause += " AND CODI_RAZONSOCIAL = :razonSocial";
+                whereClause += " AND RAZON_SOCIAL = :razonSocial";
                 parameters.Add("razonSocial", razonSocial);
             }
 
             if (!string.IsNullOrWhiteSpace(rfc))
             {
-                whereClause += " AND CODI_RFC = :rfc";
+                whereClause += " AND RFC = :rfc";
                 parameters.Add("rfc", rfc);
             }
-            if (noDealer.HasValue)
-            {
-                whereClause += " AND CODI_NODEALER = :noDealer";
-                parameters.Add("noDealer", noDealer);
-            }
+            
+            whereClause += " AND EMPRESAID = :currentUser";
 
             //Obtener total de registros 
-            var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_DISTRIBUIDORES {whereClause}";
+            var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_VDISTRIBUIDORES {whereClause}";
             var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
 
             if(totalRecords == 0)
@@ -88,23 +84,15 @@ public class DetalleRepository : IDetalleRepository
             var sql = $@"
                 SELECT * FROM (
                     SELECT 
-                        DEALERID as DealerId,
-                        CODI_NOMBRE as Nombre,
-                        CODI_RAZONSOCIAL as RazonSocial,
-                        CODI_ZONA as Zona,
-                        CODI_RFC as Rfc,
-                        CODI_MARCA as Marca,
-                        CODI_NODEALER as NoDealer,
-                        CODI_SITECODE as SiteCode,
-                        CODI_TIPO as Tipo,
-                        CODI_MARCAS as Marcas,
-                        CODI_DISTRITO as Distrito,
                         EMPR_EMPRESAID as EmpresaId,
-                        CODI_DMS as Dms,
-                        CODI_CLIENTID as ClienteId,
-                        CODI_CLIENTSECRET as CleinteSecreto,
-                        ROW_NUMBER() OVER (ORDER BY DEALERID) AS RNUM
-                    FROM LABGDMS.CO_DISTRIBUIDORES
+                        DEALER_ID as DealerId,
+                        NOMBRE as Nombre,
+                        RAZON_SOCIAL as RazonSocial,
+                        RFC as Rfc,
+                        EMPLEADOS as Empleados,
+                        TIPO as Tipo,
+                        ROW_NUMBER() OVER (ORDER BY DEALER_ID) AS RNUM
+                    FROM LABGDMS.CO_VDISTRIBUIDORES
                     {whereClause}
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
 

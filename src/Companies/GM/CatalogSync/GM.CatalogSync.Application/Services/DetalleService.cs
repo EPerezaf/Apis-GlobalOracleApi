@@ -26,7 +26,6 @@ public class DetalleService : IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
-        int? noDealer,
         int page,
         int pageSize,
         string currentUser,
@@ -36,8 +35,8 @@ public class DetalleService : IDetalleService
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] [SERVICE] Iniciando ObtenerDealersAsync - DealerId: {DealerId}, Nombre: {Nombre}, Razon Socila: {Razon Social}, RFC: {Rfc}, No Dealer: {NoDealer}, Pagina: {Page}/{PageSize}",
-                correlationId, dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", noDealer.ToString() ?? "Todos", page, pageSize);
+                "[{CorrelationId}] [SERVICE] Iniciando ObtenerDealersAsync - DealerId: {DealerId}, Nombre: {Nombre}, Razon Socila: {Razon Social}, RFC: {Rfc}, Pagina: {Page}/{PageSize}",
+                correlationId, dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", page, pageSize);
 
                 //VALIDAR PARAMETROS DE PAGINACION
                 if(page <1)
@@ -50,7 +49,7 @@ public class DetalleService : IDetalleService
 
                 //Consultar desde el repository 
                 var (dealers, totalRecords) = await _repository.GetByFilterAsync(
-                    dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, correlationId,currentUser);
+                    dealerId, nombre, razonSocial, rfc, page, pageSize, correlationId,currentUser);
                 
 
                 //Maper Dtos
@@ -59,17 +58,9 @@ public class DetalleService : IDetalleService
                     DealerId = p.DealerId,
                     Nombre = p.Nombre,
                     RazonSocial = p.RazonSocial,
-                    Zona = p.Zona,
                     Rfc = p.Rfc,
-                    Marca =p.Marca,
-                    NoDealer = p.NoDealer,
-                    SiteCode = p.SiteCode,
                     Tipo = p.Tipo,
-                    Marcas = p.Marcas,
                     EmpresaId = p.EmpresaId,
-                    Dms = p.Dms,
-                    ClienteId = p.ClienteId,
-                    ClienteSecreto = p.ClienteSecreto
                 }).ToList();
 
                 stopwatch.Stop();
