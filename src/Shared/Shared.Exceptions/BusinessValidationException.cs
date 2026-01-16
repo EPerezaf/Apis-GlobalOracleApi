@@ -23,5 +23,18 @@ namespace Shared.Exceptions
         public string Message { get; set; } = string.Empty;
         public object? AttemptedValue { get; set; }
     }
+
+    public class AsignacionConflictException : Exception
+    {
+        public int CantidadConflictos { get; set; }
+        public List<string> Errors { get; set; }
+
+        public AsignacionConflictException(string message, List<string> errors = null) 
+            : base(message)
+        {
+            Errors = errors ?? new List<string>();
+            CantidadConflictos = errors?.Count ?? 0;
+        }
+    }
 }
 

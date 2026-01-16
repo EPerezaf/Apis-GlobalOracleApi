@@ -54,11 +54,13 @@ namespace Shared.Security
             try
             {
                 var mexicoTime = GetMexicoDateTime();
-                return mexicoTime.ToString("yyyy-MM-ddTHH:mm:ss");
+                //return mexicoTime.ToString("yyyy-MM-ddTHH:mm:ss");
+                return mexicoTime.ToString("dd/MM/yyyy HH:mm:ss", new System.Globalization.CultureInfo("es-MX"));
             }
             catch
             {
-                return DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+                //return DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss");
+                return DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss", new System.Globalization.CultureInfo("es-MX"));
             }
         }
     }
