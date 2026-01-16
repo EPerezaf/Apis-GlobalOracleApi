@@ -8,7 +8,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.AsignacionDealers;
 
 [ApiController]
-[Route("/api/seguridad/asignaciones/empresaId/userId/dealerId")]
+[Route("/api/seguridad/asignaciones/{userId}/{dealerId}")]
 [Produces("application/json")]
 [Tags("AsignacionDealer")]
 public class DeleteAsignacionDealerController : ControllerBase
@@ -28,8 +28,8 @@ public class DeleteAsignacionDealerController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), 404)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> EliminarAsignacion(
-        [FromQuery] string usuario,
-        [FromQuery] string dealer)
+        [FromRoute] string usuario,
+        [FromRoute] string dealer)
     {
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
