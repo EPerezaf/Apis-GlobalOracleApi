@@ -1,12 +1,12 @@
 namespace GM.DealerSync.Domain.Interfaces;
 
 /// <summary>
-/// Interfaz para obtener campañas desde CO_CAMPAIGNCATALOG para generar payload
+/// Interfaz para obtener campañas desde CO_GM_CAMPAIGNCATALOG para generar payload
 /// </summary>
 public interface ICampaignPayloadRepository
 {
     /// <summary>
-    /// Obtiene todas las campañas activas desde CO_CAMPAIGNCATALOG
+    /// Obtiene todas las campañas activas desde CO_GM_CAMPAIGNCATALOG
     /// </summary>
     Task<List<CampaignPayload>> GetAllCampaignsAsync();
 }
