@@ -6,7 +6,7 @@ public interface IAsignacionService
 {
     Task<(List<AsignacionRespuestaDto> data, int totalRecords)> ObtenerAsignacionesAsync(
         string? usuario, 
-        string? dealer,
+        //string? dealer,
         int page, 
         int pageSize,
         string currentUser,

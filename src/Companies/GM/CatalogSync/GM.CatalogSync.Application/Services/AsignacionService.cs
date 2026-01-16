@@ -23,7 +23,7 @@ public class AsignacionService: IAsignacionService
 
     public async Task<(List<AsignacionRespuestaDto> data, int totalRecords)> ObtenerAsignacionesAsync(
         string? usuario,
-        string? dealer,
+        //string? dealer,
         int page,
         int pageSize,
         string currentUser,
@@ -32,8 +32,8 @@ public class AsignacionService: IAsignacionService
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ObtenerAsignacionesAsync - Usuario: {Usuario}, Dealer: {Dealer}, Pagina: {Page}/{PageSize}",
-            correlationId, usuario ?? "Todos", dealer ?? "Todos", page, pageSize);
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ObtenerAsignacionesAsync - Usuario: {Usuario}, Pagina: {Page}/{PageSize}",
+            correlationId, usuario ?? "Todos", page, pageSize);
             //VALIDAR PARAMETROS DE PAGINACION 
             if(page < 1)
             {
@@ -48,7 +48,7 @@ public class AsignacionService: IAsignacionService
 
             //CONSULTAR DESDE REPOSITORY
             var (asignacion, totalRecords) = await _repository.GetByFilterAsync(
-                usuario, dealer, page, pageSize, correlationId);
+                usuario, page, pageSize, correlationId);
 
             var responseDtos = asignacion.Select(p => new AsignacionRespuestaDto
             {
@@ -153,6 +153,10 @@ public class AsignacionService: IAsignacionService
             
         }
         catch (AsignacionDuplicadoException)
+        {
+            throw;
+        }
+        catch (AsignacionConflictException)
         {
             throw;
         }

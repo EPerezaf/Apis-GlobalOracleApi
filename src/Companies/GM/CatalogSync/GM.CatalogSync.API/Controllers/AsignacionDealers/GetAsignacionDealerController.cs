@@ -29,7 +29,7 @@ public class GetAsignacionDealerController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> ObtenerAsignaciones(
         [FromQuery] string? usuario = null,
-        [FromQuery] string? dealer = null,
+//        [FromQuery] string? dealer = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
     {
@@ -41,10 +41,10 @@ public class GetAsignacionDealerController : ControllerBase
         {
             _logger.LogInformation(
                 "Inicio de obtencion de asignaciones. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parametros: {@Params}",
-                currentUser, correlationId, new { usuario, dealer, page, pageSize});
+                currentUser, correlationId, new { usuario, page, pageSize});
 
             var (data, totalRecords) = await _service.ObtenerAsignacionesAsync(
-                usuario, dealer, page, pageSize,currentUser, correlationId);
+                usuario, page, pageSize,currentUser, correlationId);
             
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 

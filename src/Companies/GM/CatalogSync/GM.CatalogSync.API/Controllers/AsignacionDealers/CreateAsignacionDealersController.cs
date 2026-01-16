@@ -4,6 +4,7 @@ using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
+using Shared.Exceptions;
 using Shared.Security;
 
 namespace GM.CatalogSync.API.Controllers.AsignacionDealers;
@@ -29,6 +30,7 @@ public class CreateAsignacionDealearsController : ControllerBase
     [HttpPost]
     [ProducesResponseType(typeof(ApiResponse<AsignacionBatchResultadoDto>),200)]
     [ProducesResponseType(typeof(ApiResponse), 400)]
+    [ProducesResponseType(typeof(ApiResponse), 409)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
 
     public async Task<IActionResult> CrearAsignacion([FromBody] AsignacionBatchRequestDto request)
@@ -87,8 +89,38 @@ public class CreateAsignacionDealearsController : ControllerBase
                     Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
         }
+        catch (AsignacionConflictException ex)
+{
+    stopwatch.Stop();
+    _logger.LogWarning(ex,
+        "Conflicto detectado al crear asignaciones. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}, Conflictos: {ConflictCount}",
+        correlationId, stopwatch.ElapsedMilliseconds, currentUser, ex.CantidadConflictos);
+
+    return Conflict(new ApiResponse
+    {
+        Success = false,
+        Message = ex.Message,
+        Timestamp = DateTimeHelper.GetMexicoTimeString()
+    });
+}
         catch (AsignacionDataAccessException ex)
         {
+
+            // Verifica si la excepción interna es AsignacionConflictException
+            if (ex.InnerException is AsignacionConflictException conflictEx)
+            {
+                _logger.LogWarning(conflictEx,
+                    "Conflicto detectado al crear asignaciones (envuelto). CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
+                    correlationId, stopwatch.ElapsedMilliseconds, currentUser);
+
+                return Conflict(new ApiResponse
+                {
+                    Success = false,
+                    Message = conflictEx.Message,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+
             stopwatch.Stop();
             _logger.LogError(ex,
                 "Error de acceso a datos al crear asignaciones. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",

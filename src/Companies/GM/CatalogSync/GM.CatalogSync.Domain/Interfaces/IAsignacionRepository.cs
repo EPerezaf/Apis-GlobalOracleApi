@@ -6,7 +6,7 @@ public interface IAsignacionRepository
 {
     Task<(List<Asignacion> asignacion, int totalRecords)> GetByFilterAsync(
         string? usuario,
-        string? dealer,
+        //string? dealer,
         int page, 
         int pageSize,
         string correlationId);

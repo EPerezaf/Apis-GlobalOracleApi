@@ -24,15 +24,15 @@ public class AsignacionRepository : IAsignacionRepository
 
     public async Task<(List<Asignacion> asignacion, int totalRecords)> GetByFilterAsync(
         string? usuario,
-        string? dealer,
+        //string? dealer,
         int page,
         int pageSize,
         string correlationId)
     {
         try
         {
-            _logger.LogInformation("[{CorrrelationId}] [REPOSITORY] Consultando asignaciones - Usuario: {Usuario}, Dealer: {Dealer}, Pagina: {Page}",
-            correlationId, usuario ?? "Todos", dealer ?? "Todos", page);
+            _logger.LogInformation("[{CorrrelationId}] [REPOSITORY] Consultando asignaciones - Usuario: {Usuario}, Pagina: {Page}",
+            correlationId, usuario ?? "Todos", page);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -45,11 +45,13 @@ public class AsignacionRepository : IAsignacionRepository
                 parameters.Add("usuario", usuario);
             }
 
-            if (!string.IsNullOrWhiteSpace(dealer))
+            /*if (!string.IsNullOrWhiteSpace(dealer))
             {
                 whereClause += " AND COUD_DEALER = :dealer";
                 parameters.Add("dealer", dealer);
-            }
+            }*/
+            whereClause += " AND EMPR_EMPRESAID = '2'"; //FILTRAR SOLO GM
+            
 
             //OBTENER TOTAL DE REGISTROS
             var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_USUARIOXDEALER {whereClause}";
@@ -73,6 +75,7 @@ public class AsignacionRepository : IAsignacionRepository
                         FECHAALTA as FechaAlta,
                         USUARIOMODIFICA as UsuarioModificacion,
                         FECHAMODIFICA as FechaModificacion,
+                        EMPR_EMPRESAID as EmpresaId,
                         ROW_NUMBER() OVER (ORDER BY COUD_USUARIO) AS RNUM
                     FROM LABGDMS.CO_USUARIOXDEALER
                     {whereClause}
@@ -113,11 +116,11 @@ public class AsignacionRepository : IAsignacionRepository
                 parameters.Add("usuario", usuario);
             }
 
-            if (!string.IsNullOrWhiteSpace(dealer))
+            /*if (!string.IsNullOrWhiteSpace(dealer))
             {
                 whereClause += " AND COUD_DEALER = :dealer";
                 parameters.Add("dealer", dealer);
-            }
+            }*/
 
             var sql = $"SELECT COUNT(*) FROM LABGDMS.CO_USUARIOXDEALER {whereClause}";
             var count = await connection.ExecuteScalarAsync<int>(sql, parameters);
@@ -153,10 +156,12 @@ public class AsignacionRepository : IAsignacionRepository
                     FECHALATA,
                     USUARIOMODIFICACION, 
                     FECHAMODIFICACION,
+                    EMPR_EMPRESAID
                     ) VALUES (
                         :usuario, :dealer, 
-                        SYSDATE, :usuarioAlta
+                        SYSDATE, :usuarioAlta,
                         SYSDATE, :usuarioModificacion,
+                        :empresaId
                     )";  
             var parameters = new DynamicParameters();
             parameters.Add("usuario", asignacion.Usuario);
@@ -231,11 +236,62 @@ public class AsignacionRepository : IAsignacionRepository
                 int totalInserted = 0;
                 foreach (var asignacion in asignaciones)
                 {
+                    //1.VALIDAR QUE EL USUARIO EXISTA 
+                    var usuarioExistsSql = "SELECT COUNT(1) FROM LABGDMS.SG_USUARIO WHERE US_IDUSUARIO = :usuario";
+                    var usuarioExists = await connection.ExecuteScalarAsync<int>(
+                        usuarioExistsSql, 
+                        new {usuario = asignacion.Usuario },
+                        transaction
+                    );
+
+                    if(usuarioExists == 0)
+                    {
+                        throw new AsignacionConflictException(
+                            $"El usuario '{asignacion.Usuario}' no existe.",
+                            new List<string> { $"El usuario '{asignacion.Usuario}' no existe." }
+                        );
+                            
+                    }
+
+                    //2.VALIDAR QUE EL DEALER EXISTA
+                    var dealerExistsSql = "SELECT COUNT(1) FROM LABGDMS.CO_DISTRIBUIDORES WHERE DEALERID = :dealerId";
+                    var dealerExists = await connection.ExecuteScalarAsync<int>(
+                        dealerExistsSql, 
+                        new { dealerId = asignacion.Dealer},
+                        transaction
+                    );
+
+                    if(dealerExists == 0){
+                        throw new AsignacionConflictException(
+                        $"El dealer '{asignacion.Dealer}' no existe.",
+                        new List<string> { $"El dealer '{asignacion.Dealer}' no existe." });
+                    }
+
+                    //3.VERIFICAR QUE EL DEALER NO ESTE ASIGNADO YA 
+                    var asignacionExisteSql = @"
+                        SELECT COUNT(1)
+                        FROM LABGDMS.CO_USUARIOXDEALER
+                        WHERE COUD_USUARIO = :usuario AND COUD_DEALER = :dealer";
+                    var asignacionExiste = await connection.ExecuteScalarAsync<int>(
+                        asignacionExisteSql,
+                        new { usuario = asignacion.Usuario, dealer = asignacion.Dealer },
+                        transaction
+                    );
+
+                    if(asignacionExiste > 0)
+                    {
+                         // Lanza directamente sin envolver
+                    throw new AsignacionConflictException(
+                        $"El usuario '{asignacion.Usuario}' ya tiene asignado el dealer '{asignacion.Dealer}'.",
+                        new List<string> { $"Usuario {asignacion.Usuario} ya tiene asignado el dealer {asignacion.Dealer}" });
+                    }
+
                     var parameters = new DynamicParameters();
                     parameters.Add("usuario", asignacion.Usuario);
                     parameters.Add("dealer", asignacion.Dealer);
                     parameters.Add("usuarioAlta", currentUser ?? "SYSTEM");
                     parameters.Add("usuarioModificacion", currentUser ?? "SYSTEM");
+                    parameters.Add("empresaId", "2");
 
                     await connection.ExecuteAsync(sql, parameters, transaction);
 
@@ -257,11 +313,17 @@ public class AsignacionRepository : IAsignacionRepository
 
                 return totalInserted;
             }
+            catch(AsignacionConflictException)
+            {
+                transaction.Rollback();
+                throw;
+            }
             catch
             {
                 transaction.Rollback();
                 throw;
             }
+            
             
         }    
         catch (OracleException ex)
@@ -269,11 +331,11 @@ public class AsignacionRepository : IAsignacionRepository
             _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error Oracle en UpsertBatchWithTransactionAsync", correlationId);
             throw new DataAccessException("Error al insertar asignaciones al lote", ex);
         }
-       catch (Exception ex)
-        {
-            _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error inesperado en UpsertBatchWithTransactionAsync", correlationId);
-            throw new DataAccessException("Error inesperado al insertar asignaciones en el lote", ex);
-        }
+       catch (Exception ex) when (ex is not AsignacionConflictException) // Filtra AsignacionConflictException
+    {
+        _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error inesperado en UpsertBatchWithTransactionAsync", correlationId);
+        throw new DataAccessException("Error inesperado al insertar asignaciones en el lote", ex);
+    }
     }
     
     public async Task<int> DeleteAllAsync(
