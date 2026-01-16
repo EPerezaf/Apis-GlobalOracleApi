@@ -10,7 +10,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.AsignacionDealers;
 
 [ApiController]
-[Route("api/seguridad/empresas/empresaId/usuarios/userId/distribuidores")]
+[Route("api/seguridad/empresas/usuarios/{userId}/distribuidores")]
 [Produces("application/json")]
 [Tags("AsignacionDealer")]
 
