@@ -26,6 +26,7 @@ public class DetalleRepository : IDetalleRepository
         string? nombre,
         string? razonSocial,
         string? rfc,
+        int? empresaId,
         int page,
         int pageSize,
         string currentUser,
@@ -41,6 +42,14 @@ public class DetalleRepository : IDetalleRepository
 
                 var parameters = new DynamicParameters();
                 var whereClause = "WHERE 1=1";
+
+            if (empresaId.HasValue)
+            {
+                whereClause += " AND EMPR_EMPRESAID = :empresaId";
+                parameters.Add("empresaId", empresaId);
+                _logger.LogDebug("[{CorrelationId}] ✅ Aplicando filtro por empresa: {EmpresaId}", 
+                    correlationId, empresaId.Value);
+            }
 
             if (!string.IsNullOrWhiteSpace(dealerId))
             {

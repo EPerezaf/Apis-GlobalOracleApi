@@ -115,6 +115,112 @@ namespace Shared.Security
             logger?.LogWarning("⚠️ EmpresaId no es un número válido: {EmpresaIdStr}", empresaIdStr);
             return null;
         }
+        
+        /// <summary>
+        /// Obtiene información completa del usuario desde el JWT token
+        /// </summary>
+        /// <param name="user">ClaimsPrincipal del contexto HTTP</param>
+        /// <param name="logger">Logger opcional para registrar información</param>
+        /// <returns>Objeto con toda la información del usuario</returns>
+        public static UserInfo GetCurrentUserInfo(ClaimsPrincipal? user, ILogger? logger = null)
+        {
+            if (user == null || user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                logger?.LogWarning("⚠️ Usuario no autenticado - usando información por defecto");
+                return new UserInfo
+                {
+                    Usuario = "SYSTEM",
+                    EmpresaId = null,
+                    AgenciaId = null,
+                    UsuarioId = null,
+                    Nombre = "Sistema"
+                };
+            }
+
+            var usuario = GetCurrentUser(user, logger);
+            var empresaId = GetEmpresaId(user, logger);
+            
+            // Nueva información específica para tu sistema
+            var agenciaId = user.FindFirst("AGENCIAID")?.Value
+                          ?? user.FindFirst("AGEN_IDAGENCIA")?.Value;
+            
+            var usuarioId = user.FindFirst("USUARIOID")?.Value
+                          ?? user.FindFirst("US_ASESORSERV")?.Value;
+            
+            var nombre = user.FindFirst("NOMBRE")?.Value
+                       ?? user.FindFirst(ClaimTypes.Name)?.Value
+                       ?? user.FindFirst(ClaimTypes.GivenName)?.Value;
+
+            logger?.LogDebug("👤 Información de usuario obtenida - Usuario: {Usuario}, Empresa: {EmpresaId}, Agencia: {AgenciaId}", 
+                usuario, empresaId, agenciaId);
+
+            return new UserInfo
+            {
+                Usuario = usuario,
+                EmpresaId = empresaId,
+                AgenciaId = agenciaId,
+                UsuarioId = usuarioId,
+                Nombre = nombre
+            };
+        }
+
+        /// <summary>
+        /// Obtiene el AgenciaId del usuario autenticado desde el JWT token
+        /// </summary>
+        public static string? GetAgenciaId(ClaimsPrincipal? user, ILogger? logger = null)
+        {
+            if (user == null || user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                logger?.LogWarning("⚠️ Usuario no autenticado - no se puede obtener AgenciaId");
+                return null;
+            }
+
+            var agenciaId = user.FindFirst("AGENCIAID")?.Value
+                          ?? user.FindFirst("AGEN_IDAGENCIA")?.Value;
+
+            logger?.LogDebug("🏪 AgenciaId obtenido: {AgenciaId}", agenciaId ?? "N/A");
+            return agenciaId;
+        }
+
+        /// <summary>
+        /// Obtiene el UsuarioId (ID interno) del usuario autenticado desde el JWT token
+        /// </summary>
+        public static string? GetUsuarioId(ClaimsPrincipal? user, ILogger? logger = null)
+        {
+            if (user == null || user.Identity == null || !user.Identity.IsAuthenticated)
+            {
+                logger?.LogWarning("⚠️ Usuario no autenticado - no se puede obtener UsuarioId");
+                return null;
+            }
+
+            var usuarioId = user.FindFirst("USUARIOID")?.Value
+                          ?? user.FindFirst("US_ASESORSERV")?.Value;
+
+            logger?.LogDebug("🆔 UsuarioId obtenido: {UsuarioId}", usuarioId ?? "N/A");
+            return usuarioId;
+        }
     }
+
+    /// <summary>
+    /// Información completa del usuario autenticado
+    /// </summary>
+    public class UserInfo
+    {
+        public string Usuario { get; set; } = "SYSTEM";
+        public int? EmpresaId { get; set; }
+        public string? AgenciaId { get; set; }
+        public string? UsuarioId { get; set; }
+        public string? Nombre { get; set; }
+
+        public bool HasEmpresaInfo => EmpresaId.HasValue && !string.IsNullOrEmpty(AgenciaId);
+        
+        public override string ToString()
+        {
+            return HasEmpresaInfo 
+                ? $"{Usuario} (Empresa: {EmpresaId}, Agencia: {AgenciaId})"
+                : Usuario;
+        }
+    }
+    
 }
 
