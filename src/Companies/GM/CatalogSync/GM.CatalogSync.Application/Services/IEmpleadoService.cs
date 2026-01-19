@@ -9,6 +9,7 @@ public interface IEmpleadoService
         int? dealerId,
         string? curp,
         string? numeroEmpleado,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,

@@ -36,6 +36,7 @@ public class GetDetalleDealerController : ControllerBase
         [FromQuery] string? nombre = null,
         [FromQuery] string? razonSocial = null,
         [FromQuery] string? rfc = null,
+        [FromQuery] int? activo = null,
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 2000)
     {
@@ -48,10 +49,10 @@ public class GetDetalleDealerController : ControllerBase
         {
             _logger.LogInformation(
                 "Inicio de obtenecion de dealers. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parametros: {@Params}",
-                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId });
+                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, activo, userInfo.EmpresaId });
 
                 var (data, totalRecords) = await _service.ObtenerDelearAsync(
-                    dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+                    dealerId, nombre, razonSocial, rfc, activo, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
                 
                 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);

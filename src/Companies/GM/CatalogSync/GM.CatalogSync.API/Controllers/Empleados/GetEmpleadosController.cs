@@ -35,6 +35,7 @@ public class GetEmpleadosController : ControllerBase
         [FromQuery] int? dealerId = null,
         [FromQuery] string? curp = null,
         [FromQuery] string? numeroEmpleado = null,
+        [FromQuery] int? activo = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
     {
@@ -48,10 +49,10 @@ public class GetEmpleadosController : ControllerBase
             
              _logger.LogInformation(
                 "Inicio de obtención de empleados. Usuario: {UserId}, CorrelationId: {CorrelationId}, EmpresaId: {EmpresaId}, Parámetros: {@Params}",
-                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp,numeroEmpleado, page, pageSize });
+                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp,numeroEmpleado, activo, page, pageSize });
 
             var (data, totalRecords) = await _service.ObtenerEmpleadosAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+                idEmpleado,dealerId,curp,numeroEmpleado, activo, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
 
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 

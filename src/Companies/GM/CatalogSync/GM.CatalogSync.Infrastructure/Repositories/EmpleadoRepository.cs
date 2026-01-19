@@ -26,6 +26,7 @@ public class EmpleadoRepository : IEmpleadoRepository
         int? dealerId,
         string? curp,
         string? numeroEmpleado,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -71,6 +72,11 @@ public class EmpleadoRepository : IEmpleadoRepository
             {
                 whereClause += " AND NUMERO_EMPLEADO = :numeroEmpleado";
                 parameters.Add("numeroEmpleado", numeroEmpleado);
+            }
+            if(activo.HasValue)
+            {
+                whereClause += " AND ACTIVO = :activo";
+                parameters.Add("activo", activo);
             }
 
             // Obtener total de registros
