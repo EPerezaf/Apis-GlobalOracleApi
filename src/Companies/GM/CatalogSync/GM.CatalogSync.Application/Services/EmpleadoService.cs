@@ -24,6 +24,7 @@ public class EmpleadoService : IEmpleadoService
         int? dealerId,
         string? curp,
         string? numeroEmpleado,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -47,7 +48,7 @@ public class EmpleadoService : IEmpleadoService
             
             // Consultar desde Repository
             var (empleados, totalRecords) = await _repository.GetByFilterAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado,empresaId, page, pageSize, correlationId);
+                idEmpleado,dealerId,curp,numeroEmpleado, activo,empresaId, page, pageSize, correlationId);
 
             var responseDtos = empleados.Select(p => new EmpleadoRespuestaDto
             {

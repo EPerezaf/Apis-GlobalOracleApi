@@ -9,4 +9,5 @@ public class DetalleDealer
     public string Rfc { get; set;} = string.Empty;
     public int Empleados { get; set;}
     public string Tipo { get; set;} = string.Empty;
+    public int Activo { get; set;}
 }

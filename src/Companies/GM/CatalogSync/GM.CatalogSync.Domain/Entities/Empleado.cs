@@ -5,7 +5,7 @@ public class Empleado
     public int EmpresaId {get; set;}
     public int IdEmpleado { get; set;}
     public string DealerId { get; set;} = string.Empty;
-    public string Activo {get; set;} = string.Empty;
+    public int Activo {get; set;}
     public string Curp {get; set;} = string.Empty;
     public string NumeroEmpleado {get; set;} = string.Empty;
     public string NombreCompleto {get; set;} = string.Empty;
