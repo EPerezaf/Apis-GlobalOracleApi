@@ -9,6 +9,7 @@ public interface IEmpleadoRepository
         int? dealerId,
         string? curp,
         string? numeroEmpleado,
+        int? empresaId,
         int page,
         int pageSize,
         string correlationId);

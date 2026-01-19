@@ -9,6 +9,7 @@ public interface IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
+        int? empresaId,
         int page,
         int pageSize,
         string currentUser,

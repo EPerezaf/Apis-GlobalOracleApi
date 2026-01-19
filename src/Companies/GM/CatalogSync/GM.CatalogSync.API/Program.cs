@@ -87,6 +87,11 @@ builder.Services.AddSwaggerGen(c =>
             {
                 return new[] { "CampaignList" };
             }
+
+            if(resourcePath.StartsWith("AsignacionDealer"))
+            {
+                return new[] { "AsignacionDealer" };
+            }
             
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
             var resource = resourcePath.Split('-')

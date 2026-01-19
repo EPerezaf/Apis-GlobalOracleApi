@@ -26,6 +26,7 @@ public class EmpleadoRepository : IEmpleadoRepository
         int? dealerId,
         string? curp,
         string? numeroEmpleado,
+        int? empresaId,
         int page,
         int pageSize,
         string correlationId)
@@ -39,6 +40,14 @@ public class EmpleadoRepository : IEmpleadoRepository
 
             var parameters = new DynamicParameters();
             var whereClause = "WHERE 1=1";
+
+            if (empresaId.HasValue)
+            {
+                whereClause += " AND EMPR_EMPRESAID = :empresaId";
+                parameters.Add("empresaId", empresaId);
+                _logger.LogDebug("[{CorrelationId}] ✅ Aplicando filtro por empresa: {EmpresaId}", 
+                    correlationId, empresaId.Value);
+            }
 
             if (idEmpleado.HasValue)
             {
