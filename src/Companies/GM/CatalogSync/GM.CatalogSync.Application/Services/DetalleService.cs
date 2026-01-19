@@ -4,6 +4,7 @@ using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
 using Shared.Exceptions;
+using Shared.Security;
 
 namespace GM.CatalogSync.Application.Services;
 
@@ -26,7 +27,11 @@ public class DetalleService : IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
+<<<<<<< HEAD
         int? noDealer,
+=======
+        int? empresaId,
+>>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
         int page,
         int pageSize,
         string currentUser,
@@ -50,7 +55,11 @@ public class DetalleService : IDetalleService
 
                 //Consultar desde el repository 
                 var (dealers, totalRecords) = await _repository.GetByFilterAsync(
+<<<<<<< HEAD
                     dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, correlationId,currentUser);
+=======
+                    dealerId, nombre, razonSocial, rfc, empresaId, page, pageSize, correlationId,currentUser);
+>>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 
 
                 //Maper Dtos
@@ -67,9 +76,13 @@ public class DetalleService : IDetalleService
                     Tipo = p.Tipo,
                     Marcas = p.Marcas,
                     EmpresaId = p.EmpresaId,
+<<<<<<< HEAD
                     Dms = p.Dms,
                     ClienteId = p.ClienteId,
                     ClienteSecreto = p.ClienteSecreto
+=======
+                    Empleados = p.Empleados,
+>>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 }).ToList();
 
                 stopwatch.Stop();

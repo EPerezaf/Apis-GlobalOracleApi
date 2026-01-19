@@ -2,6 +2,7 @@ using System.Diagnostics;
 using GM.CatalogSync.Application.DTOs;
 using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
 using Shared.Security;
@@ -11,6 +12,7 @@ namespace GM.CatalogSync.API.Controllers.Empleados;
 [ApiController]
 [Route("api/v1/gm/empleados/obtener-empleados")]
 [Produces("application/json")]
+[Authorize]
 [Tags("Empleados")]
 public class GetEmpleadosController : ControllerBase
 {
@@ -36,18 +38,20 @@ public class GetEmpleadosController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
     {
+        var userInfo = JwtUserHelper.GetCurrentUserInfo(User, _logger);
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
+            
              _logger.LogInformation(
-                "Inicio de obtención de empleados. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parámetros: {@Params}",
-                currentUser, correlationId, new { idEmpleado,dealerId,curp,numeroEmpleado, page, pageSize });
+                "Inicio de obtención de empleados. Usuario: {UserId}, CorrelationId: {CorrelationId}, EmpresaId: {EmpresaId}, Parámetros: {@Params}",
+                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp,numeroEmpleado, page, pageSize });
 
             var (data, totalRecords) = await _service.ObtenerEmpleadosAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado, page, pageSize, currentUser, correlationId);
+                idEmpleado,dealerId,curp,numeroEmpleado, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
 
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 

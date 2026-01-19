@@ -28,8 +28,8 @@ public class DeleteAsignacionDealerController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), 404)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> EliminarAsignacion(
-        [FromRoute] string usuario,
-        [FromRoute] string dealer)
+        [FromRoute] string userId,
+        [FromRoute] string dealerId)
     {
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
@@ -41,7 +41,7 @@ public class DeleteAsignacionDealerController : ControllerBase
                 "Inicio de eliminacion de asignacion por dealer. Usuario: {UserId}, CorrelationId: {CorrelationId}",
                 currentUser, correlationId);
             var rowsAffected = await _service.EliminarTodosAsync(
-                usuario, dealer,currentUser, correlationId);
+                userId, dealerId, currentUser, correlationId);
             stopwatch.Stop();
 
             if(rowsAffected > 0)

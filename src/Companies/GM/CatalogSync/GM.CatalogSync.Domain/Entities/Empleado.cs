@@ -10,7 +10,7 @@ public class Empleado
     public string NumeroEmpleado {get; set;} = string.Empty;
     public string NombreCompleto {get; set;} = string.Empty;
     public string Departamento { get; set;} = string.Empty;
-    public string NombrePuesto {get; set;} = string.Empty;
+    public string Puesto {get; set;} = string.Empty;
     public DateTime FechaNacimiento { get; set;}
     public int Edad {get; set;}
     public string EmailOrganizacional {get; set;} = string.Empty;

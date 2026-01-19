@@ -2,6 +2,7 @@ using System.Diagnostics;
 using GM.CatalogSync.Application.DTOs;
 using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Application.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Shared.Contracts.Responses;
 using Shared.Security;
@@ -11,6 +12,7 @@ namespace GM.CatalogSync.API.Controllers.DetallerDealer;
 [ApiController]
 [Route("api/v1/jt/detalle-dealer")]
 [Produces("application/json")]
+[Authorize]
 [Tags("DetalleDealer")]
 
 public class GetDetalleDealerController : ControllerBase
@@ -41,15 +43,23 @@ public class GetDetalleDealerController : ControllerBase
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
         var stopwatch = Stopwatch.StartNew();
+        var userInfo = JwtUserHelper.GetCurrentUserInfo(User, _logger);
 
         try
         {
             _logger.LogInformation(
                 "Inicio de obtenecion de dealers. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parametros: {@Params}",
+<<<<<<< HEAD
                 currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, noDealer });
 
                 var (data, totalRecords) = await _service.ObtenerDelearAsync(
                     dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, currentUser, correlationId);
+=======
+                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId });
+
+                var (data, totalRecords) = await _service.ObtenerDelearAsync(
+                    dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+>>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 
                 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
