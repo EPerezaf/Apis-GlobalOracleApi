@@ -110,6 +110,7 @@ public class EmpleadoRepository : IEmpleadoRepository
                             TELEFONO as Telefono,
                             FECHA_INGRESO as FechaIngreso,
                             JEFE_INMEDIATO as JefeInmediato,
+                            ANTIGUEDAD as Antiguedad,
                         ROW_NUMBER() OVER (ORDER BY ID_EMPLEADO) AS RNUM
                     FROM LABGDMS.CO_VEMPLEADOS
                     {whereClause}

@@ -66,7 +66,8 @@ public class EmpleadoService : IEmpleadoService
                 EmailOrganizacional = p.EmailOrganizacional,
                 Telefono = p.Telefono,
                 FechaIngreso = p.FechaIngreso,
-                JefeInmediato = p.JefeInmediato
+                JefeInmediato = p.JefeInmediato,
+                Antiguedad = p.Antiguedad
             }).ToList();
 
             stopwatch.Stop();
