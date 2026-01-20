@@ -17,6 +17,7 @@ public class Empleado
     public string Telefono { get; set;} = string.Empty;
     public DateTime FechaIngreso {get; set;}
     public string JefeInmediato { get; set;} = string.Empty;
+    public string Antiguedad { get; set;} = string.Empty;
     public string? UsuarioAlta {get; set;}
     public DateTime FechaAlta {get; set;}
     public string? UsuarioModifica {get; set;}

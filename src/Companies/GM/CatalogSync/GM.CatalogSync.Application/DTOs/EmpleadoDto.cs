@@ -49,4 +49,5 @@ public class EmpleadoRespuestaDto
     public string Telefono { get; set;} = string.Empty;
     public DateTime FechaIngreso {get; set;}
     public string JefeInmediato { get; set;} = string.Empty;
+    public string Antiguedad { get; set;} = string.Empty;
 }
