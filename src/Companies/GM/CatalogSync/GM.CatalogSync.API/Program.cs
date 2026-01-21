@@ -88,9 +88,19 @@ builder.Services.AddSwaggerGen(c =>
                 return new[] { "CampaignList" };
             }
 
-            if(resourcePath.StartsWith("AsignacionDealer"))
+            if(resourcePath.StartsWith("seguridad"))
             {
                 return new[] { "AsignacionDealer" };
+            }
+
+            if (resourcePath.StartsWith("obtener-empleados"))
+            {
+                return new [] { "Empleados"};
+            }
+
+            if(resourcePath.StartsWith("detalle-dealers"))
+            {
+                return new[] { "DetalleDealer"};
             }
             
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
@@ -296,6 +306,10 @@ builder.Services.AddScoped<IEmpleadoService, EmpleadoService>();
 //Empledos historico 
 builder.Services.AddScoped<IEmpleadoHistoricoRepository, EmpleadoHistoricoRepository>();
 builder.Services.AddScoped<IEmpleadoHistoricoService,EmpleadoHistoricoService>();
+
+//Empleados Expediente
+builder.Services.AddScoped<IEmpleadoExpedienteRepository, EmpleadoExpedienteRepository>();
+builder.Services.AddScoped<IEmpleadoExpedienteService, EmpleadosExpedienteService>();
 
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
