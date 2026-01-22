@@ -90,6 +90,7 @@ public class EmpleadoExpedienteRepository : IEmpleadoExpedienteRepository
                         NUMERO_EMPLEADO as NumeroEmpleado,
                         CLAVE_TIPO_DOCUMENTO as ClaveTipoDocumento,
                         NOMBRE_TIPO_DOCUMENTO as NombreTipoDocumento,
+                        NOMBRE_DOCUMENTO as NombreDocumento,
                         OBLIGATORIO as Obligatorio,
                         CONTAINER_STORAGE as ContainerStorage,
                         VERSION_DOCUMENTO as VersionDocumento,
