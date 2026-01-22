@@ -99,6 +99,191 @@ public class AsignacionRepository : IAsignacionRepository
         }
     }
 
+    public async Task<(List<Asignacion> disponibles, int totalRecords)> GetUsuarioDisponibleByFilterAsync(
+        string? userId,
+        string? nombre,
+        string? email,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId)
+    {
+        try
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            var parameters = new DynamicParameters();
+            var whereClause = "WHERE 1=1";
+
+            if (empresaId.HasValue)
+            {
+                whereClause += " AND u.EMPR_EMPRESAID = :empresaId";
+                parameters.Add("empresaId", empresaId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                whereClause += " AND u.US_IDUSUARIO = :userId";
+                parameters.Add("userId", userId);
+            }
+
+            if (!string.IsNullOrWhiteSpace(nombre))
+            {
+                whereClause += " AND u.US_NOMBRE LIKE :nombre";
+                parameters.Add("nombre", $"%{nombre}%");
+            }
+
+            if (!string.IsNullOrWhiteSpace(email))
+            {
+                whereClause += " AND u.US_EMAIL LIKE :email";
+                parameters.Add("email", $"%{email}%");
+            }
+
+            // Consulta para contar usuarios disponibles (no asignados a ningún dealer)
+            var countSql = $@"
+                SELECT COUNT(*)
+                FROM LABGDMS.SG_USUARIO u
+                {whereClause}
+                AND NOT EXISTS (
+                    SELECT 1 FROM LABGDMS.CO_USUARIOXDEALER d
+                    WHERE d.COUD_USUARIO = u.US_IDUSUARIO
+                )";
+            var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+            if (totalRecords == 0)
+            {
+                return (new List<Asignacion>(), 0);
+            }
+
+            int offset = (page - 1) * pageSize;
+            parameters.Add("offset", offset);
+            parameters.Add("limit", offset + pageSize);
+
+            // Consulta para obtener usuarios disponibles con paginación
+            var sql = $@"
+                SELECT * FROM (
+                    SELECT 
+                        u.US_IDUSUARIO as Usuario,
+                        NULL as Dealer,
+                        NULL as UsuarioAlta,
+                        NULL as FechaAlta,
+                        NULL as UsuarioModificacion,
+                        NULL as FechaModificacion,
+                        u.EMPR_EMPRESAID as EmpresaId,
+                        ROW_NUMBER() OVER (ORDER BY u.US_IDUSUARIO) AS RNUM
+                    FROM LABGDMS.SG_USUARIO u
+                    {whereClause}
+                    AND NOT EXISTS (
+                        SELECT 1 FROM LABGDMS.CO_USUARIOXDEALER d
+                        WHERE d.COUD_USUARIO = u.US_IDUSUARIO
+                    )
+                ) WHERE RNUM > :offset AND RNUM <= :limit";
+
+            var disponibles = await connection.QueryAsync<Asignacion>(sql, parameters);
+            return (disponibles.ToList(), totalRecords);
+        }
+        catch (OracleException ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error Oracle en GetUsuariosDisponiblesAsync", correlationId);
+            throw new DataAccessException("Error al consultar usuarios disponibles para asignacion", ex);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error inesperado en GetUsuariosDisponiblesAsync", correlationId);
+            throw new DataAccessException("Error inesperado al consultar usuarios disponibles para asignacion", ex);
+        }
+    }
+
+    public async Task<(List<DetalleDealer> disponibles, int totalRecords)> GetDealerDisponibleByFilterAsync(
+        string? userId,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId)
+    {
+        try
+        {
+            using var connection = await _connectionFactory.CreateConnectionAsync();
+            var parameters = new DynamicParameters();
+            var whereClause = "WHERE 1=1";
+
+            if (empresaId.HasValue)
+            {
+                whereClause += " AND d.EMPR_EMPRESAID = :empresaId";
+                parameters.Add("empresaId", empresaId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(userId))
+            {
+                parameters.Add("userId", userId);
+            }
+
+            // Obtener total de registros
+            var countSql = $@"
+                SELECT COUNT(*)
+                FROM LABGDMS.CO_DISTRIBUIDORES d
+                {whereClause}
+                AND NOT EXISTS (
+                    SELECT 1 FROM LABGDMS.CO_USUARIOXDEALER ud
+                    WHERE ud.COUD_DEALER = d.DEALERID
+                    AND ud.COUD_USUARIO = :userId
+                )";
+            var totalRecords = await connection.ExecuteScalarAsync<int>(countSql, parameters);
+
+            if (totalRecords == 0)
+            {
+                return (new List<DetalleDealer>(), 0);
+            }
+
+            int offset = (page - 1) * pageSize;
+            parameters.Add("offset", offset);
+            parameters.Add("pageSize", offset + pageSize);
+
+            var sql = $@"
+                SELECT * FROM (
+                    SELECT 
+                        DEALERID as DealerId,
+                        CODI_NOMBRE as Nombre,
+                        CODI_RAZONSOCIAL as RazonSocial,
+                        CODI_ZONA as Zona,
+                        CODI_RFC as Rfc,
+                        CODI_MARCA as Marca,
+                        CODI_NODEALER as NoDealer,
+                        CODI_SITECODE as SiteCode,
+                        CODI_TIPO as Tipo,
+                        CODI_MARCAS as Marcas,
+                        CODI_DISTRITO as Distrito,
+                        EMPR_EMPRESAID as EmpresaId,
+                        CODI_DMS as Dms,
+                        CODI_CLIENTID as ClienteId,
+                        CODI_CLIENTSECRET as ClienteSecreto,
+                        ROW_NUMBER() OVER (ORDER BY DEALERID) AS RNUM
+                    FROM LABGDMS.CO_DISTRIBUIDORES d
+                    {whereClause}
+                    AND NOT EXISTS (
+                        SELECT 1 FROM LABGDMS.CO_USUARIOXDEALER ud
+                        WHERE ud.COUD_DEALER = d.DEALERID
+                        AND ud.COUD_USUARIO = :userId
+                    )
+                ) WHERE RNUM > :offset AND RNUM <= :pageSize";
+
+            var distribuidores = await connection.QueryAsync<DetalleDealer>(sql, parameters);
+            _logger.LogInformation("[{CorrelationId}] [REPOSITORY] Consulta completada - {Count} registros de {Total} totales",
+            correlationId, distribuidores.Count(), totalRecords);
+            return (distribuidores.ToList(), totalRecords);
+        }
+        catch (OracleException ex){
+            _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error oracle en GetDealerDisponibleByFilterAsync", correlationId);
+            throw new DataAccessException("Error al consultar distribuidores asignables", ex);
+        }
+        catch(Exception ex)
+        {
+            _logger.LogError(ex, "[{CorrelationId}] [REPOSITORY] Error inesperado en GetDealerDisponibleByFilterAsync", correlationId);
+            throw new DataAccessException("Error inesperado al consultar distribuidores asignables", ex);
+        }
+    }
+
     public async Task<int> GetTotalCountAsync(
         string? usuario,
         string? dealer,

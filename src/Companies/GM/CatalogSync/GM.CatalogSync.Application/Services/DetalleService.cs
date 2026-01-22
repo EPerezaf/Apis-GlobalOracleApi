@@ -27,7 +27,6 @@ public class DetalleService : IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
-        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -52,7 +51,7 @@ public class DetalleService : IDetalleService
 
                 //Consultar desde el repository 
                 var (dealers, totalRecords) = await _repository.GetByFilterAsync(
-                    dealerId, nombre, razonSocial, rfc, activo, empresaId, page, pageSize, correlationId,currentUser);
+                    dealerId, nombre, razonSocial, rfc, empresaId, page, pageSize, correlationId,currentUser);
                 
 
                 //Maper Dtos
@@ -64,8 +63,6 @@ public class DetalleService : IDetalleService
                     Rfc = p.Rfc,
                     Tipo = p.Tipo,
                     EmpresaId = p.EmpresaId,
-                    Empleados = p.Empleados,
-                    Activo = p.Activo
                 }).ToList();
 
                 stopwatch.Stop();
