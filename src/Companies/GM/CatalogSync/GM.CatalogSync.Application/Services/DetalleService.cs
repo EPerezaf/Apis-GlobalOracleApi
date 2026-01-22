@@ -60,13 +60,8 @@ public class DetalleService : IDetalleService
                     DealerId = p.DealerId,
                     Nombre = p.Nombre,
                     RazonSocial = p.RazonSocial,
-                    Zona = p.Zona,
                     Rfc = p.Rfc,
-                    Marca =p.Marca,
-                    NoDealer = p.NoDealer,
-                    SiteCode = p.SiteCode,
                     Tipo = p.Tipo,
-                    Marcas = p.Marcas,
                     EmpresaId = p.EmpresaId,
                 }).ToList();
 

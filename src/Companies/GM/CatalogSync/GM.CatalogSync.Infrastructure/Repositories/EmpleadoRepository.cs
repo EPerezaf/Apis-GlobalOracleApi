@@ -51,7 +51,7 @@ public class EmpleadoRepository : IEmpleadoRepository
 
             if (idEmpleado.HasValue)
             {
-                whereClause += " AND EMPR_EMPRESAID = :idEmpleado";
+                whereClause += " AND ID_EMPLEADO = :idEmpleado";
                 parameters.Add("idEmpleado", idEmpleado);
             }
 
@@ -63,14 +63,19 @@ public class EmpleadoRepository : IEmpleadoRepository
 
             if (!string.IsNullOrWhiteSpace(curp))
             {
-                whereClause += " AND COEM_CURP = :curp";
+                whereClause += " AND CURP = :curp";
                 parameters.Add("curp", curp);
             }
 
             if (!string.IsNullOrWhiteSpace(numeroEmpleado))
             {
-                whereClause += " AND COEM_NUMEROEMPLEADO = :numeroEmpleado";
+                whereClause += " AND NUMERO_EMPLEADO = :numeroEmpleado";
                 parameters.Add("numeroEmpleado", numeroEmpleado);
+            }
+            if(activo.HasValue)
+            {
+                whereClause += " AND ACTIVO = :activo";
+                parameters.Add("activo", activo);
             }
 
             // Obtener total de registros
@@ -89,22 +94,23 @@ public class EmpleadoRepository : IEmpleadoRepository
             var sql = $@"
                 SELECT * FROM (
                     SELECT 
-                        EMPR_EMPRESAID as EmpresaId,
-                        COEM_IDEMPLEADO as IdEmpleado,
-                        DEALERID as DealerId,
-                        COEM_ACTIVO as Activo,
-                        COEM_CURP as Curp,
-                        COEM_NUMEROEMPLEADO as NumeroEmpleado,
-                        COEM_NOMBRECOMPLETO as NombreCompleto,
-                        COEH_DEPARTAMENTO as Departamento,
-                        COEH_NOMBREPUESTO as NombrePuesto,
-                        COEM_FECHANACIMIENTO as FechaNacimiento,
-                        EDAD as Edad,
-                        COEM_EMAILORGANIZACIONAL as EmailOgranizacional,
-                        COED_TELEFONO as Telefono,
-                        COEM_FECHAINGRESO as FechaIngreso,
-                        JEFEINMEDIATO as JefeInmediato,
-                        ROW_NUMBER() OVER (ORDER BY COEM_IDEMPLEADO) AS RNUM
+                           EMPR_EMPRESAID as EmpresaId,
+                            ID_EMPLEADO as IdEmpleado,
+                            DEALERID as DealerId,
+                            ACTIVO as Activo,
+                            CURP as Curp,
+                            NUMERO_EMPLEADO as NumeroEmpleado,
+                            NOMBRE_COMPLETO as NombreCompleto,
+                            DEPARTAMENTO as Departamento,
+                            PUESTO as Puesto,
+                            FECHA_NACIMIENTO as FechaNacimiento,
+                            EDAD as Edad,
+                            EMAIL_ORGANIZACIONAL as EmailOrganizacional,
+                            TELEFONO as Telefono,
+                            FECHA_INGRESO as FechaIngreso,
+                            JEFE_INMEDIATO as JefeInmediato,
+                            ANTIGUEDAD as Antiguedad,
+                        ROW_NUMBER() OVER (ORDER BY ID_EMPLEADO) AS RNUM
                     FROM LABGDMS.CO_VEMPLEADOS
                     {whereClause}
                 ) WHERE RNUM > :offset AND RNUM <= :limit";
@@ -143,7 +149,7 @@ public class EmpleadoRepository : IEmpleadoRepository
 
             if (idEmpleado.HasValue)
             {
-                whereClause += " AND EMPR_EMPRESAID = :idEmpleado";
+                whereClause += " AND ID_EMPLEADO = :idEmpleado";
                 parameters.Add("idEmpleado", idEmpleado);
             }
 
@@ -155,13 +161,13 @@ public class EmpleadoRepository : IEmpleadoRepository
 
             if (!string.IsNullOrWhiteSpace(curp))
             {
-                whereClause += " AND COEM_CURP = :curp";
+                whereClause += " AND CURP = :curp";
                 parameters.Add("curp", curp);
             }
 
             if (!string.IsNullOrWhiteSpace(numeroEmpleado))
             {
-                whereClause += " AND COEM_NUMEROEMPLEADO = :numeroEmpleado";
+                whereClause += " AND NUMERO_EMPLEADO = :numeroEmpleado";
                 parameters.Add("numeroEmpleado", numeroEmpleado);
             }
 

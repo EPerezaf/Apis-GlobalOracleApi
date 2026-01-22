@@ -8,34 +8,34 @@ using Shared.Contracts.Responses;
 using Shared.Security;
 
 namespace GM.CatalogSync.API.Controllers.Empleados;
-
 [ApiController]
-[Route("api/v1/jt/empleados/obtener-empleados")]
+[Route("api/v1/jt/empleados/obtener-empleados-historico")]
 [Produces("application/json")]
 [Authorize]
 [Tags("Empleados")]
-public class GetEmpleadosController : ControllerBase
+public class GetEmpleadosHistoricoController: ControllerBase
 {
-    private readonly IEmpleadoService _service;
-    private readonly ILogger<GetEmpleadosController> _logger;
-    public GetEmpleadosController(
-        IEmpleadoService service,
-        ILogger<GetEmpleadosController> logger)
+    private readonly IEmpleadoHistoricoService _service;
+    private readonly ILogger<GetEmpleadosHistoricoController> _logger;
+    public GetEmpleadosHistoricoController(
+        IEmpleadoHistoricoService service,
+        ILogger<GetEmpleadosHistoricoController> logger)
     {
-            _service = service;
-            _logger = logger;
+        _service = service;
+        _logger = logger;
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<List<EmpleadoRespuestaDto>>), 200)]
+    [ProducesResponseType(typeof(ApiResponse<List<EmpleadoHistoricoRespuestaDto>>), 200)]
     [ProducesResponseType(typeof(ApiResponse), 400)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
-    public async Task<IActionResult> ObtenerEmpleados(
+    public async Task<IActionResult> ObtenerEmpleadosHistorico(
+        [FromQuery] int? idAsignacion = null,
         [FromQuery] int? idEmpleado = null,
         [FromQuery] int? dealerId = null,
-        [FromQuery] string? curp = null,
-        [FromQuery] string? numeroEmpleado = null,
-        [FromQuery] int? activo = null,
+        [FromQuery] string? clavePuesto = null,
+        [FromQuery] string? departamento = null,
+        [FromQuery] int? esActual = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
     {
@@ -46,27 +46,25 @@ public class GetEmpleadosController : ControllerBase
 
         try
         {
+            _logger.LogInformation(
+                "Inicio de obtencion de empleados historico. Usuario: {UserId}, CorrelationId: {CorrelationId}, EmpresaId: {EmpresaId}, Parametros: {@Params}",
+                currentUser, correlationId, userInfo.EmpresaId, new { idAsignacion,idEmpleado, dealerId,clavePuesto,departamento, page,pageSize});
             
-             _logger.LogInformation(
-                "Inicio de obtención de empleados. Usuario: {UserId}, CorrelationId: {CorrelationId}, EmpresaId: {EmpresaId}, Parámetros: {@Params}",
-                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp,numeroEmpleado, page, pageSize });
-
-            var (data, totalRecords) = await _service.ObtenerEmpleadosAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
-
+            var (data, totalRecords) = await _service.ObtenerEmpleadosHistoricosAsync(
+                idAsignacion, idEmpleado, dealerId, clavePuesto, departamento,esActual, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+            
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 
             stopwatch.Stop();
             _logger.LogInformation(
-                "Empleados obtenidos exitosamente. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Registros: {Count} de {Total}, Página: {Page} de {TotalPages}",
-                correlationId, stopwatch.ElapsedMilliseconds, data.Count, totalRecords, page, totalPages);
-
-
-            return Ok(new ApiResponse<List<EmpleadoRespuestaDto>>
+                "Empleados Historico obtenidos exitosamente. CorrelationId: {Correlationid}, tiempo: {ElapsedMs}ms, Registros: {Count} de {Total}, Pagina: {Page} de {TotalPages}",
+                correlationId, stopwatch.ElapsedMilliseconds, data.Count, totalRecords,page, totalPages);
+            
+            return Ok(new ApiResponse<List<EmpleadoHistoricoRespuestaDto>>
             {
-                Success =true,
+                Success = true,
                 Message = data.Count > 0
-                    ? $"Registros obtenidos exitosamente (Paina {page} de {totalPages})"
+                    ? $"Registros obtenidos exitosamente (Pagina {page} de {totalPages})"
                     : "No se encontraron registros que coincidan con los filtros",
                 Data = data,
                 Pagination = new PaginationInfo
@@ -76,21 +74,21 @@ public class GetEmpleadosController : ControllerBase
                     TotalRecords = totalRecords,
                     TotalPages = totalPages
                 },
-                Timestamp =DateTimeHelper.GetMexicoTimeString()
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }
         catch (EmpleadoValidacionException ex)
         {
             stopwatch.Stop();
             _logger.LogWarning(ex,
-                "Error de validación al obtener empleados. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
+                "Error de validacion al obtener empleados historico. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
                 correlationId, stopwatch.ElapsedMilliseconds, currentUser);
-
+            
             return BadRequest(new ApiResponse
             {
-                Success = false,
+                Success= true,
                 Message = ex.Message,
-                Data = ex.Errors,
+                Data = ex.Data,
                 Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }
@@ -98,13 +96,14 @@ public class GetEmpleadosController : ControllerBase
         {
             stopwatch.Stop();
             _logger.LogError(ex,
-                "Error de acceso a datos al obtener empleados. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
+                "Error de acceso a datos al obtener empleados historico. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
                 correlationId, stopwatch.ElapsedMilliseconds, currentUser);
-
+            
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
-                Message = "Error al acceder a la base de datos. Por favor, intente nuevamente.",
+                Message = "Ocurrió un error al procesar la solicitud",
+                Data = ex.Data,
                 Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }
@@ -112,17 +111,16 @@ public class GetEmpleadosController : ControllerBase
         {
             stopwatch.Stop();
             _logger.LogError(ex,
-                "Error inesperado al obtener empleados. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
+                "Error inesperado al obtener empleados historico. CorrelationId: {CorrelationId}, Tiempo: {ElapsedMs}ms, Usuario: {UserId}",
                 correlationId, stopwatch.ElapsedMilliseconds, currentUser);
-
+            
             return StatusCode(500, new ApiResponse
             {
                 Success = false,
-                Message = "Error interno del servidor. El error ha sido registrado.",
+                Message = "Ocurrió un error inesperado al procesar la solicitud",
                 Timestamp = DateTimeHelper.GetMexicoTimeString()
             });
         }
     }
-
     
 }

@@ -10,7 +10,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.DetallerDealer;
 
 [ApiController]
-[Route("api/v1/jt/detalle-dealer")]
+[Route("api/v1/jt/detalle-dealers")]
 [Produces("application/json")]
 [Authorize]
 [Tags("DetalleDealer")]
@@ -36,9 +36,9 @@ public class GetDetalleDealerController : ControllerBase
         [FromQuery] string? nombre = null,
         [FromQuery] string? razonSocial = null,
         [FromQuery] string? rfc = null,
-        [FromQuery] int? noDealer = null,
+        [FromQuery] int? activo = null,
         [FromQuery] int page = 1, 
-        [FromQuery] int pageSize = 200)
+        [FromQuery] int pageSize = 2000)
     {
         var correlationId = CorrelationHelper.GetCorrelationId(HttpContext);
         var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);

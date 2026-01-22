@@ -293,6 +293,14 @@ builder.Services.AddScoped<IDetalleService, DetalleService>();
 builder.Services.AddScoped<IEmpleadoRepository, EmpleadoRepository>();
 builder.Services.AddScoped<IEmpleadoService, EmpleadoService>();
 
+//Empledos historico 
+builder.Services.AddScoped<IEmpleadoHistoricoRepository, EmpleadoHistoricoRepository>();
+builder.Services.AddScoped<IEmpleadoHistoricoService,EmpleadoHistoricoService>();
+
+//Empleados Expediente
+builder.Services.AddScoped<IEmpleadoExpedienteRepository, EmpleadoExpedienteRepository>();
+builder.Services.AddScoped<IEmpleadoExpedienteService, EmpleadosExpedienteService>();
+
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
 builder.Services.AddSingleton<PerformanceMonitor>();
