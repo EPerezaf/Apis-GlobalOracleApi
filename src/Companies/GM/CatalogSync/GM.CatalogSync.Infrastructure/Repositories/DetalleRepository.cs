@@ -26,11 +26,7 @@ public class DetalleRepository : IDetalleRepository
         string? nombre,
         string? razonSocial,
         string? rfc,
-<<<<<<< HEAD
-        int? noDealer,
-=======
         int? empresaId,
->>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
         int page,
         int pageSize,
         string currentUser,
@@ -39,8 +35,8 @@ public class DetalleRepository : IDetalleRepository
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, No Dealer: {NoDealer} Pagina: {Page}",
-                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", noDealer.ToString() ?? "Todos", page, page);
+                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, Pagina: {Page}",
+                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", page, page);
 
                 using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -78,11 +74,7 @@ public class DetalleRepository : IDetalleRepository
                 whereClause += " AND CODI_RFC = :rfc";
                 parameters.Add("rfc", rfc);
             }
-            if (noDealer.HasValue)
-            {
-                whereClause += " AND CODI_NODEALER = :noDealer";
-                parameters.Add("noDealer", noDealer);
-            }
+            
 
             //Obtener total de registros 
             var countSql = $"SELECT COUNT(*) FROM LABGDMS.CO_DISTRIBUIDORES {whereClause}";

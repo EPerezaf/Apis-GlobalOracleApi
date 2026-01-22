@@ -22,4 +22,23 @@ public interface IAsignacionService
         string dealer,
         string currentUser,
         string correlationId);
+
+    Task<(List<AsignacionRespuestaDto> data, int totalRecords)> ObtenerUsuariosDisponiblesAsync(
+        string? userId,
+        string? nombre,
+        string? email,
+        int? empresaId,
+        int page, 
+        int pageSize,
+        string currentUser,
+        string correlationId);
+
+    Task<(List<DetalleDealerRespuestaDto> data, int totalRecords)> ObtenerDistribuidoresAsignablesAsync(
+        string? userid,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId);
+    
 }

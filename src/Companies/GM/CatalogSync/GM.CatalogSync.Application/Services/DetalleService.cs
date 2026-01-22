@@ -27,11 +27,7 @@ public class DetalleService : IDetalleService
         string? nombre,
         string? razonSocial,
         string? rfc,
-<<<<<<< HEAD
-        int? noDealer,
-=======
         int? empresaId,
->>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
         int page,
         int pageSize,
         string currentUser,
@@ -41,8 +37,8 @@ public class DetalleService : IDetalleService
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] [SERVICE] Iniciando ObtenerDealersAsync - DealerId: {DealerId}, Nombre: {Nombre}, Razon Socila: {Razon Social}, RFC: {Rfc}, No Dealer: {NoDealer}, Pagina: {Page}/{PageSize}",
-                correlationId, dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", noDealer.ToString() ?? "Todos", page, pageSize);
+                "[{CorrelationId}] [SERVICE] Iniciando ObtenerDealersAsync - DealerId: {DealerId}, Nombre: {Nombre}, Razon Socila: {Razon Social}, RFC: {Rfc}, Pagina: {Page}/{PageSize}",
+                correlationId, dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", page, pageSize);
 
                 //VALIDAR PARAMETROS DE PAGINACION
                 if(page <1)
@@ -55,11 +51,7 @@ public class DetalleService : IDetalleService
 
                 //Consultar desde el repository 
                 var (dealers, totalRecords) = await _repository.GetByFilterAsync(
-<<<<<<< HEAD
-                    dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, correlationId,currentUser);
-=======
                     dealerId, nombre, razonSocial, rfc, empresaId, page, pageSize, correlationId,currentUser);
->>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 
 
                 //Maper Dtos
@@ -76,13 +68,6 @@ public class DetalleService : IDetalleService
                     Tipo = p.Tipo,
                     Marcas = p.Marcas,
                     EmpresaId = p.EmpresaId,
-<<<<<<< HEAD
-                    Dms = p.Dms,
-                    ClienteId = p.ClienteId,
-                    ClienteSecreto = p.ClienteSecreto
-=======
-                    Empleados = p.Empleados,
->>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 }).ToList();
 
                 stopwatch.Stop();

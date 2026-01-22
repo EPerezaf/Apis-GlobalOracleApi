@@ -10,6 +10,24 @@ public interface IAsignacionRepository
         int page, 
         int pageSize,
         string correlationId);
+
+    Task<(List<Asignacion> disponibles, int totalRecords)> GetUsuarioDisponibleByFilterAsync(
+        string? userId,
+        string? nombre, string? email,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string correlationId,
+        string currentUser
+    );
+
+    Task<(List<DetalleDealer> disponibles, int totalRecords)> GetDealerDisponibleByFilterAsync(
+        string? userId,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId);
     
     Task<int> GetTotalCountAsync(
         string? usuario,

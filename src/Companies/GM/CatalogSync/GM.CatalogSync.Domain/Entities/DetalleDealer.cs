@@ -17,4 +17,5 @@ public class DetalleDealer
     public string Dms { get; set;} = string.Empty;
     public string ClienteId {get; set;} = string.Empty;
     public string ClienteSecreto { get;set;} = string.Empty;
+    
 }

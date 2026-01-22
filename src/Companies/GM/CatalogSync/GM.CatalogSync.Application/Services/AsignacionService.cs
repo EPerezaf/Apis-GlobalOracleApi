@@ -82,6 +82,117 @@ public class AsignacionService: IAsignacionService
         }
     }
 
+    public async Task<(List<AsignacionRespuestaDto> data, int totalRecords)> ObtenerUsuariosDisponiblesAsync(
+        string? userId,
+        string? nombre,
+        string? email,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ObtenerUsuariosDisponiblesAsync - Usuario: {User}, Nombre: {Nombre}, Email: {Email}, Pagina: {Page}/{PageSize}",
+            correlationId, userId ?? "Todos", nombre ?? "Todos", email ?? "Todos", page, pageSize);
+
+            var (asignacion, totalRecords) = await _repository.GetUsuarioDisponibleByFilterAsync(
+                userId,
+                nombre,
+                email,
+                empresaId,
+                page,
+                pageSize,
+                currentUser,
+                correlationId);
+
+            var responseDto = asignacion.Select(p => new AsignacionRespuestaDto
+            {
+                Usuario = p.Usuario,
+                Dealer = p.Dealer,
+                FechaAlta = p.FechaAlta,
+                UsuarioAlta = p.UsuarioAlta,
+                FechaModificacion = p.FechaModificacion,
+                UsuarioModificacion = p.UsuarioModificacion,
+                EmpresaId = p.EmpresaId
+            }).ToList();
+
+            stopwatch.Stop();
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] ObtenerUsuariosDisponiblesAsync completado en {Tiempo}ms",
+                correlationId, stopwatch.ElapsedMilliseconds);
+            return (responseDto, totalRecords);
+        }
+        catch (AsignacionValidacionException)
+        {
+            throw;
+        }
+        catch (AsignacionDataAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Error inesperado en ObtenerUsuarioDisponibleAsync", correlationId);
+            throw new BusinessException("Error al obtener usuario disponible para asignacion", ex);
+        }    
+    }
+
+    public async Task<(List<DetalleDealerRespuestaDto> data, int totalRecords)> ObtenerDistribuidoresAsignablesAsync(
+        string? userId,
+        int? empresaId,
+        int page,
+        int pageSize,
+        string currentUser,
+        string correlationId)
+    {
+        var stopwatch = Stopwatch.StartNew();
+        try
+        {
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ObtenerDistribuidoresAsignablesAsync - UserId: {UserId}, Pagina: {Page}/{PageSize}",
+            correlationId, userId ?? "Todos", page, pageSize);
+
+            var (asignacion, totalRecords) = await _repository.GetDealerDisponibleByFilterAsync(
+                userId,
+                empresaId,
+                page,
+                pageSize,
+                currentUser,
+                correlationId);
+
+            var responseDto = asignacion.Select(p => new DetalleDealerRespuestaDto
+            {
+                DealerId = p.DealerId,
+                Nombre = p.Nombre,
+                RazonSocial = p.RazonSocial,
+                Rfc = p.Rfc,
+                EmpresaId = p.EmpresaId
+            }).ToList();
+
+            stopwatch.Stop();
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] ObtenerDistribuidoresAsignablesAsync completado en {Tiempo}ms",
+                correlationId, stopwatch.ElapsedMilliseconds);
+            return (responseDto, totalRecords);
+        }
+        catch (AsignacionValidacionException)
+        {
+            throw;
+        }
+        catch (AsignacionDataAccessException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Error inesperado en ObtenerDistribuidoresAsignablesAsync", correlationId);
+            throw new BusinessException("Error al obtener dealers disponibles para asignacion", ex);
+        }    
+    }
+    
+
     public async Task<AsignacionBatchResultadoDto> ProcesarBatchInsertAsync(
         List<AsignacionCrearDto> asignacion,
         string currentUser,
@@ -90,7 +201,7 @@ public class AsignacionService: IAsignacionService
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ProcesarbatchInsertAsync - Usuario: {User}, Total: {Count}",
+            _logger.LogInformation("[{CorrelationId}] [SERVICE] Iniciando ProcesarBatchInsertAsync - Usuario: {User}, Total: {Count}",
             correlationId, currentUser, asignacion?.Count ?? 0);
 
             //VALIDAR BATCH

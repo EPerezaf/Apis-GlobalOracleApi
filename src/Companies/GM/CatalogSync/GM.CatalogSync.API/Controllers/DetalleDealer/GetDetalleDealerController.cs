@@ -49,17 +49,10 @@ public class GetDetalleDealerController : ControllerBase
         {
             _logger.LogInformation(
                 "Inicio de obtenecion de dealers. Usuario: {UserId}, CorrelationId: {CorrelationId}, Parametros: {@Params}",
-<<<<<<< HEAD
-                currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, noDealer });
-
-                var (data, totalRecords) = await _service.ObtenerDelearAsync(
-                    dealerId, nombre, razonSocial, rfc, noDealer, page, pageSize, currentUser, correlationId);
-=======
                 currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId });
 
                 var (data, totalRecords) = await _service.ObtenerDelearAsync(
                     dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
->>>>>>> 49a386a (Se agrego el login y filtrado por empresa)
                 
                 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
