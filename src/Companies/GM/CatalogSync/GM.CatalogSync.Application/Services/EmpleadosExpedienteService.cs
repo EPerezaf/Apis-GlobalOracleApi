@@ -66,6 +66,7 @@ public class EmpleadosExpedienteService : IEmpleadoExpedienteService
                 NumeroEmpleado  = p.NumeroEmpleado,
                 ClaveTipoDocumento = p.ClaveTipoDocumento,
                 NombreTipoDocumento = p.NombreTipoDocumento,
+                NombreDocumento = p.NombreDocumento,
                 Obligatorio = p.Obligatorio,
                 ContainerStorage = p.ContainerStorage,
                 VersionDocumento = p.VersionDocumento,

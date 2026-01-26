@@ -101,7 +101,9 @@ public class EmpleadoRepository : IEmpleadoRepository
                             ACTIVO as Activo,
                             CURP as Curp,
                             NUMERO_EMPLEADO as NumeroEmpleado,
-                            NOMBRE_COMPLETO as NombreCompleto,
+                            NOMBRE as Nombre,
+                            PRIMER_APELLIDO as PrimerApellido,
+                            SEGUNDO_APELLIDO as SegundoApellido,
                             DEPARTAMENTO as Departamento,
                             PUESTO as Puesto,
                             FECHA_NACIMIENTO as FechaNacimiento,
@@ -109,7 +111,9 @@ public class EmpleadoRepository : IEmpleadoRepository
                             EMAIL_ORGANIZACIONAL as EmailOrganizacional,
                             TELEFONO as Telefono,
                             FECHA_INGRESO as FechaIngreso,
-                            JEFE_INMEDIATO as JefeInmediato,
+                            JEFE_NOMBRE as JefeNombre,
+                            JEFE_PRIMER_APELLIDO as JefePrimerApellido,
+                            JEFE_SEGUNDO_APELLIDO as JefeSegundoApellido,
                             ANTIGUEDAD as Antiguedad,
                         ROW_NUMBER() OVER (ORDER BY ID_EMPLEADO) AS RNUM
                     FROM LABGDMS.CO_VEMPLEADOS

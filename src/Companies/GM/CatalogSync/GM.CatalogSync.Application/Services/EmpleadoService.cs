@@ -58,7 +58,9 @@ public class EmpleadoService : IEmpleadoService
                 Activo = p.Activo,
                 Curp = p.Curp,
                 NumeroEmpleado = p.NumeroEmpleado,
-                NombreCompleto = p.NombreCompleto,
+                Nombre = p.Nombre,
+                PrimerApellido = p.PrimerApellido,
+                SegundoApellido = p.SegundoApellido,
                 Departamento = p.Departamento,
                 Puesto = p.Puesto,
                 FechaNacimiento = p.FechaNacimiento,
@@ -66,7 +68,9 @@ public class EmpleadoService : IEmpleadoService
                 EmailOrganizacional = p.EmailOrganizacional,
                 Telefono = p.Telefono,
                 FechaIngreso = p.FechaIngreso,
-                JefeInmediato = p.JefeInmediato,
+                JefeNombre = p.JefeNombre,
+                JefePrimerApellido = p.JefePrimerApellido,
+                JefeSegundoApellido = p.JefeSegundoApellido,
                 Antiguedad = p.Antiguedad
             }).ToList();
 
