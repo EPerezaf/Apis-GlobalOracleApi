@@ -9,7 +9,7 @@ public class EmpleadoExpediente
     public string NumeroEmpleado { get; set;} = string.Empty;
     public int ClaveTipoDocumento { get; set;}
     public string NombreTipoDocumento { get; set;} = string.Empty;
-    public string NombreDocumento { get;set;} =string.Empty;
+    public string NombreDocumento { get;set;} = string.Empty;
     public string Obligatorio { get; set; } = string.Empty;
     public string ContainerStorage { get;set;} = string.Empty;
     public int VersionDocumento { get; set;}

@@ -71,9 +71,9 @@ public class EmpleadosExpedienteService : IEmpleadoExpedienteService
                 ContainerStorage = p.ContainerStorage,
                 VersionDocumento = p.VersionDocumento,
                 EsVigente = p.EsVigente,
-                FechaCarga = p.FechaCarga,
-                FechaDocumento = p.FechaDocumento,
-                FechaVencimiento = p.FechaVencimiento,
+                FechaCarga = p.FechaCarga.ToString("yyyy-MM-dd HH:mm:ss", new System.Globalization.CultureInfo("es-MX")),
+                FechaDocumento = p.FechaDocumento.ToString("yyyy-MM-dd", new System.Globalization.CultureInfo("es-MX")),
+                FechaVencimiento = p.FechaVencimiento.ToString("yyyy-MM-dd", new System.Globalization.CultureInfo("es-MX")),
                 Observaciones = p.Observaciones
                 /*IdDocumento = p.IdDocumento,
                 IdEmpleado = p.IdEmpleado,
