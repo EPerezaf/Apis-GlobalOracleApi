@@ -9,9 +9,9 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.Empleados;
 
 [ApiController]
-[Route("api/v1/jt/empleados/obtener-empleados-expediente")]
+[Route("api/v1/common/erp/empleados/{idEmpleado}/expediente")]
 [Produces("application/json")]
-[Tags("Empleados")]
+[Tags("ERP")]
 public class GetEmpleadosExpedienteController : ControllerBase
 {
     private readonly IEmpleadoExpedienteService _service;
@@ -29,8 +29,8 @@ public class GetEmpleadosExpedienteController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), 400)]
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> ObtenerEmpleadosExpediente(
+        [FromRoute] int idEmpleado,
         [FromQuery] int? idDocumento = null,
-        [FromQuery] int? idEmpleado = null,
         [FromQuery] int? claveTipoDocumento = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)

@@ -25,7 +25,7 @@ public class EmpleadoRepository : IEmpleadoRepository
         int? idEmpleado,
         int? dealerId,
         string? curp,
-        string? numeroEmpleado,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -33,8 +33,8 @@ public class EmpleadoRepository : IEmpleadoRepository
     {
         try
         {
-            _logger.LogInformation("[{CorrelationId}] 🗄️ [REPOSITORY] Consultando empleados - Id Empleado: {Idempleado}, Dealer Id: {DealerId}, Curp: {Curp}, Numero Empleado: {Numeroempleado} Página: {Page}",
-                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", numeroEmpleado ?? "Todos", page);
+            _logger.LogInformation("[{CorrelationId}] 🗄️ [REPOSITORY] Consultando empleados - Id Empleado: {Idempleado}, Dealer Id: {DealerId}, Curp: {Curp}, Página: {Page}",
+                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", page);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -67,11 +67,7 @@ public class EmpleadoRepository : IEmpleadoRepository
                 parameters.Add("curp", curp);
             }
 
-            if (!string.IsNullOrWhiteSpace(numeroEmpleado))
-            {
-                whereClause += " AND NUMERO_EMPLEADO = :numeroEmpleado";
-                parameters.Add("numeroEmpleado", numeroEmpleado);
-            }
+            
             if(activo.HasValue)
             {
                 whereClause += " AND ACTIVO = :activo";
@@ -100,7 +96,9 @@ public class EmpleadoRepository : IEmpleadoRepository
                             ACTIVO as Activo,
                             CURP as Curp,
                             NUMERO_EMPLEADO as NumeroEmpleado,
-                            NOMBRE_COMPLETO as NombreCompleto,
+                            NOMBRE as Nombre,
+                            PRIMER_APELLIDO as PrimerApellido,
+                            SEGUNDO_APELLIDO as SegundoApellido,
                             DEPARTAMENTO as Departamento,
                             PUESTO as Puesto,
                             FECHA_NACIMIENTO as FechaNacimiento,
@@ -108,7 +106,9 @@ public class EmpleadoRepository : IEmpleadoRepository
                             EMAIL_ORGANIZACIONAL as EmailOrganizacional,
                             TELEFONO as Telefono,
                             FECHA_INGRESO as FechaIngreso,
-                            JEFE_INMEDIATO as JefeInmediato,
+                            JEFE_NOMBRE as JefeNombre,
+                            JEFE_PRIMER_APELLIDO as JefePrimerApellido,
+                            JEFE_SEGUNDO_APELLIDO as JefeSegundoApellido,
                             ANTIGUEDAD as Antiguedad,
                         ROW_NUMBER() OVER (ORDER BY ID_EMPLEADO) AS RNUM
                     FROM LABGDMS.CO_VEMPLEADOS

@@ -10,7 +10,7 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.DetallerDealer;
 
 [ApiController]
-[Route("api/v1/jt/detalle-dealers")]
+[Route("api/v1/common/erp/empleados/detalle-dealers")]
 [Produces("application/json")]
 [Authorize]
 [Tags("DetalleDealer")]

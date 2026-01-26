@@ -23,7 +23,7 @@ public class EmpleadoService : IEmpleadoService
         int? idEmpleado,
         int? dealerId,
         string? curp,
-        string? numeroEmpleado,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -33,8 +33,8 @@ public class EmpleadoService : IEmpleadoService
         var stopwatch = Stopwatch.StartNew();
         try
         {
-            _logger.LogInformation("[{CorrelationId}] 🔷 [SERVICE] Iniciando ObtenerEmpleadosAsync - Id Empleado: {Idempleado}, Empresa Id: {Empresaid}, Curp: {Curp}, Rfc: {Rfc}, Página: {Page}/{PageSize}",
-                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos",numeroEmpleado ?? "Todos", page, pageSize);
+            _logger.LogInformation("[{CorrelationId}] 🔷 [SERVICE] Iniciando ObtenerEmpleadosAsync - Id Empleado: {Idempleado}, Empresa Id: {Empresaid}, Curp: {Curp}, Página: {Page}/{PageSize}",
+                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", page, pageSize);
 
             // Validar parámetros de paginación
             if (page < 1)
@@ -47,7 +47,7 @@ public class EmpleadoService : IEmpleadoService
             
             // Consultar desde Repository
             var (empleados, totalRecords) = await _repository.GetByFilterAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado,empresaId, page, pageSize, correlationId);
+                idEmpleado,dealerId,curp, activo,empresaId, page, pageSize, correlationId);
 
             var responseDtos = empleados.Select(p => new EmpleadoRespuestaDto
             {
@@ -57,7 +57,9 @@ public class EmpleadoService : IEmpleadoService
                 Activo = p.Activo,
                 Curp = p.Curp,
                 NumeroEmpleado = p.NumeroEmpleado,
-                NombreCompleto = p.NombreCompleto,
+                Nombre = p.Nombre,
+                PrimerApellido = p.PrimerApellido,
+                SegundoApellido = p.SegundoApellido,
                 Departamento = p.Departamento,
                 Puesto = p.Puesto,
                 FechaNacimiento = p.FechaNacimiento,
@@ -65,7 +67,9 @@ public class EmpleadoService : IEmpleadoService
                 EmailOrganizacional = p.EmailOrganizacional,
                 Telefono = p.Telefono,
                 FechaIngreso = p.FechaIngreso,
-                JefeInmediato = p.JefeInmediato,
+                JefeNombre = p.JefeNombre,
+                JefePrimerApellido = p.JefePrimerApellido,
+                JefeSegundoApellido = p.JefeSegundoApellido,
                 Antiguedad = p.Antiguedad
             }).ToList();
 

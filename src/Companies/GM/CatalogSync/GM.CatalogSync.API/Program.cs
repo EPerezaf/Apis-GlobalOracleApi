@@ -92,6 +92,22 @@ builder.Services.AddSwaggerGen(c =>
             {
                 return new[] { "AsignacionDealer" };
             }
+
+            if (resourcePath.StartsWith("empleados"))
+            {
+                return new [] { "ERP"};
+            }
+            var resourcePathSeguridad = segments[1];
+            if(resourcePathSeguridad.StartsWith("seguridad"))
+            {
+                return new[] { "Seguridad" };
+            }
+
+            var resourcePathCarga = segments[1];
+            if(resourcePathCarga.StartsWith("CreateCargaExpediente"))
+            {
+                return new[] { "CreateCargaExpediente" };
+            }
             
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"
             var resource = resourcePath.Split('-')
