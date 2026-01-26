@@ -10,10 +10,10 @@ using Shared.Security;
 namespace GM.CatalogSync.API.Controllers.Empleados;
 
 [ApiController]
-[Route("api/v1/jt/empleados/obtener-empleados")]
+[Route("api/v1/common/erp/empleados/empleados")]
 [Produces("application/json")]
 [Authorize]
-[Tags("Empleados")]
+[Tags("ERP")]
 public class GetEmpleadosController : ControllerBase
 {
     private readonly IEmpleadoService _service;
@@ -34,7 +34,6 @@ public class GetEmpleadosController : ControllerBase
         [FromQuery] int? idEmpleado = null,
         [FromQuery] int? dealerId = null,
         [FromQuery] string? curp = null,
-        [FromQuery] string? numeroEmpleado = null,
         [FromQuery] int? activo = null,
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 200)
@@ -49,10 +48,10 @@ public class GetEmpleadosController : ControllerBase
             
              _logger.LogInformation(
                 "Inicio de obtención de empleados. Usuario: {UserId}, CorrelationId: {CorrelationId}, EmpresaId: {EmpresaId}, Parámetros: {@Params}",
-                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp,numeroEmpleado, activo, page, pageSize });
+                currentUser, correlationId, userInfo.EmpresaId, new { idEmpleado,dealerId,curp, activo, page, pageSize });
 
             var (data, totalRecords) = await _service.ObtenerEmpleadosAsync(
-                idEmpleado,dealerId,curp,numeroEmpleado, activo, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+                idEmpleado,dealerId,curp, activo, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
 
             int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
 

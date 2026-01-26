@@ -9,6 +9,7 @@ namespace GM.CatalogSync.API.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [Tags("ERP")]
     public class CreateCargaExpedienteController : ControllerBase
     {
         private readonly ICargaExpedienteService _service;

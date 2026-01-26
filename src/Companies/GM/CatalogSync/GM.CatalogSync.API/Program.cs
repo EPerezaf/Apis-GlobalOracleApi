@@ -93,14 +93,20 @@ builder.Services.AddSwaggerGen(c =>
                 return new[] { "AsignacionDealer" };
             }
 
-            if (resourcePath.StartsWith("obtener-empleados"))
+            if (resourcePath.StartsWith("empleados"))
             {
-                return new [] { "Empleados"};
+                return new [] { "ERP"};
+            }
+            var resourcePathSeguridad = segments[1];
+            if(resourcePathSeguridad.StartsWith("seguridad"))
+            {
+                return new[] { "Seguridad" };
             }
 
-            if(resourcePath.StartsWith("detalle-dealers"))
+            var resourcePathCarga = segments[1];
+            if(resourcePathCarga.StartsWith("CreateCargaExpediente"))
             {
-                return new[] { "DetalleDealer"};
+                return new[] { "CreateCargaExpediente" };
             }
             
             // Convertir kebab-case a PascalCase: "carga-archivos-sinc" -> "CargaArchivosSinc"

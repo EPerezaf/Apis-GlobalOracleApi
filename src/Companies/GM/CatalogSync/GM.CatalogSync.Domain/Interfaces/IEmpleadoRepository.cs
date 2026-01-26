@@ -8,7 +8,6 @@ public interface IEmpleadoRepository
         int? idEmpleado,
         int? dealerId,
         string? curp,
-        string? numeroEmpleado,
         int? activo,
         int? empresaId,
         int page,

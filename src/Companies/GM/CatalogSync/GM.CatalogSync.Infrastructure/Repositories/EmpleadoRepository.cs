@@ -25,7 +25,6 @@ public class EmpleadoRepository : IEmpleadoRepository
         int? idEmpleado,
         int? dealerId,
         string? curp,
-        string? numeroEmpleado,
         int? activo,
         int? empresaId,
         int page,
@@ -34,8 +33,8 @@ public class EmpleadoRepository : IEmpleadoRepository
     {
         try
         {
-            _logger.LogInformation("[{CorrelationId}] 🗄️ [REPOSITORY] Consultando empleados - Id Empleado: {Idempleado}, Dealer Id: {DealerId}, Curp: {Curp}, Numero Empleado: {Numeroempleado} Página: {Page}",
-                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", numeroEmpleado ?? "Todos", page);
+            _logger.LogInformation("[{CorrelationId}] 🗄️ [REPOSITORY] Consultando empleados - Id Empleado: {Idempleado}, Dealer Id: {DealerId}, Curp: {Curp}, Página: {Page}",
+                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", page);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -68,11 +67,7 @@ public class EmpleadoRepository : IEmpleadoRepository
                 parameters.Add("curp", curp);
             }
 
-            if (!string.IsNullOrWhiteSpace(numeroEmpleado))
-            {
-                whereClause += " AND NUMERO_EMPLEADO = :numeroEmpleado";
-                parameters.Add("numeroEmpleado", numeroEmpleado);
-            }
+            
             if(activo.HasValue)
             {
                 whereClause += " AND ACTIVO = :activo";

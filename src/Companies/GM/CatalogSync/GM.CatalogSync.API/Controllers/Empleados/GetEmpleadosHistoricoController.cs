@@ -9,10 +9,10 @@ using Shared.Security;
 
 namespace GM.CatalogSync.API.Controllers.Empleados;
 [ApiController]
-[Route("api/v1/jt/empleados/obtener-empleados-historico")]
+[Route("api/v1/common/erp/empleados/empleados-historico-asignacion")]
 [Produces("application/json")]
 [Authorize]
-[Tags("Empleados")]
+[Tags("ERP")]
 public class GetEmpleadosHistoricoController: ControllerBase
 {
     private readonly IEmpleadoHistoricoService _service;
