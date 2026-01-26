@@ -88,7 +88,7 @@ builder.Services.AddSwaggerGen(c =>
                 return new[] { "CampaignList" };
             }
 
-            if(resourcePath.StartsWith("seguridad"))
+            if(resourcePath.StartsWith("AsignacionDealer"))
             {
                 return new[] { "AsignacionDealer" };
             }
