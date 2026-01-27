@@ -26,6 +26,7 @@ public class DetalleRepository : IDetalleRepository
         string? nombre,
         string? razonSocial,
         string? rfc,
+        int? activo,
         int? empresaId,
         int page,
         int pageSize,
@@ -35,8 +36,8 @@ public class DetalleRepository : IDetalleRepository
         try
         {
             _logger.LogInformation(
-                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, Pagina: {Page}",
-                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", page, page);
+                "[{CorrelationId}] [REPOSITORY] Consultando dealers - Dealer Id: {DealerId}, Nombre: {Nombre}, Razon Social: {RazonSocial}, RFC: {Rfc}, EmpresaId: {EmpresaId}, Pagina: {Page}",
+                dealerId ?? "Todos", nombre ?? "Todos", razonSocial ?? "Todos", rfc ?? "Todos", empresaId, page, page);
 
                 using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -73,6 +74,11 @@ public class DetalleRepository : IDetalleRepository
             {
                 whereClause += " AND RFC = :rfc";
                 parameters.Add("rfc", rfc);
+            }
+            if(activo.HasValue)
+            {
+                whereClause += " AND ACTIVO = :activo";
+                parameters.Add("activo", activo);
             }
             
 
