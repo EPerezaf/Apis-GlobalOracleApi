@@ -7,7 +7,7 @@ public interface IEmpleadoHistoricoService
     Task <(List<EmpleadoHistoricoRespuestaDto> data, int totalRecords)>ObtenerEmpleadosHistoricosAsync(
         int? idAsignacion,
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? clavePuesto,
         string? departamento,
         int? esActual,
