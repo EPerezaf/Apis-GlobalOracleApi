@@ -6,7 +6,7 @@ public interface IEmpleadoRepository
 {
     Task<(List<Empleado> empleados, int totalRecords)> GetByFilterAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         int? activo,
         int? empresaId,
@@ -16,7 +16,7 @@ public interface IEmpleadoRepository
 
     Task<int> GetTotalCountAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         string? numeroEmpleado,
         string correlationId);

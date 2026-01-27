@@ -21,7 +21,7 @@ public class EmpleadoHistoricoService : IEmpleadoHistoricoService
     public async Task<(List<EmpleadoHistoricoRespuestaDto> data, int totalRecords)> ObtenerEmpleadosHistoricosAsync(
         int? idAsignacion,
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? clavePuesto,
         string? departamento,
         int? esActual,
@@ -38,7 +38,7 @@ public class EmpleadoHistoricoService : IEmpleadoHistoricoService
                 correlationId, 
                 idAsignacion.ToString() ?? "Todos", 
                 idEmpleado.ToString() ?? "Todos", 
-                dealerId.ToString() ?? "Todas", 
+                dealerId ?? "Todas", 
                 clavePuesto ?? "Todos", 
                 departamento ?? "Todos",
                 esActual.ToString() ?? "Todos",

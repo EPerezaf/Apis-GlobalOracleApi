@@ -32,7 +32,7 @@ public class GetEmpleadosHistoricoController: ControllerBase
     public async Task<IActionResult> ObtenerEmpleadosHistorico(
         [FromQuery] int? idAsignacion = null,
         [FromQuery] int? idEmpleado = null,
-        [FromQuery] int? dealerId = null,
+        [FromQuery] string? dealerId = null,
         [FromQuery] string? clavePuesto = null,
         [FromQuery] string? departamento = null,
         [FromQuery] int? esActual = null,

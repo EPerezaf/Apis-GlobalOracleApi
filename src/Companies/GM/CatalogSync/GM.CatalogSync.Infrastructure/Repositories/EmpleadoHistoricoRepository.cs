@@ -23,7 +23,7 @@ public class EmpleadoHistoricoRepository : IEmpleadoHistoricoRepository
     public async Task<(List<EmpleadoHistorico> empleadosHistorico, int totalRecords)> GetByFilterAsync(
         int? idAsignacion,
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? clavePuesto,
         string? departamento,
         int? esActual,
@@ -39,7 +39,7 @@ public class EmpleadoHistoricoRepository : IEmpleadoHistoricoRepository
             correlationId,
             idAsignacion.ToString() ?? "Todos",
             idEmpleado.ToString() ?? "Todos",
-            dealerId.ToString() ?? "Todos",
+            dealerId ?? "Todos",
             clavePuesto ?? "Todos",
             departamento ?? "Todos",
             esActual.ToString() ?? "Todos",
@@ -69,7 +69,7 @@ public class EmpleadoHistoricoRepository : IEmpleadoHistoricoRepository
                 whereClause += " AND COEM_IDEMPLEADO = :idEmpleado";
                 parameters.Add("idEmpleado", idEmpleado);
             }
-            if (dealerId.HasValue)
+            if (!string.IsNullOrWhiteSpace(dealerId))
             {
                 whereClause += " AND DEALERID = :dealerId";
                 parameters.Add("dealerId", dealerId);
