@@ -6,7 +6,7 @@ public interface IEmpleadoService
 {
     Task<(List<EmpleadoRespuestaDto> data, int totalRecords)> ObtenerEmpleadosAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         int? activo,
         int? empresaId,

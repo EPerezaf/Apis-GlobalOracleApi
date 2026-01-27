@@ -21,7 +21,7 @@ public class EmpleadoService : IEmpleadoService
 
     public async Task<(List<EmpleadoRespuestaDto> data, int totalRecords)> ObtenerEmpleadosAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         int? activo,
         int? empresaId,
@@ -34,7 +34,7 @@ public class EmpleadoService : IEmpleadoService
         try
         {
             _logger.LogInformation("[{CorrelationId}] 🔷 [SERVICE] Iniciando ObtenerEmpleadosAsync - Id Empleado: {Idempleado}, Empresa Id: {Empresaid}, Curp: {Curp}, Página: {Page}/{PageSize}",
-                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", page, pageSize);
+                correlationId, idEmpleado.ToString() ?? "Todos", dealerId ?? "Todas", curp ?? "Todos", page, pageSize);
 
             // Validar parámetros de paginación
             if (page < 1)

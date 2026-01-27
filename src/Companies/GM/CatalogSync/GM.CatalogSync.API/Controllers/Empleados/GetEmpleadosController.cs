@@ -32,7 +32,7 @@ public class GetEmpleadosController : ControllerBase
     [ProducesResponseType(typeof(ApiResponse), 500)]
     public async Task<IActionResult> ObtenerEmpleados(
         [FromQuery] int? idEmpleado = null,
-        [FromQuery] int? dealerId = null,
+        [FromQuery] string? dealerId = null,
         [FromQuery] string? curp = null,
         [FromQuery] int? activo = null,
         [FromQuery] int page = 1,

@@ -23,7 +23,7 @@ public class EmpleadoRepository : IEmpleadoRepository
 
     public async Task<(List<Empleado> empleados, int totalRecords)> GetByFilterAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         int? activo,
         int? empresaId,
@@ -34,7 +34,7 @@ public class EmpleadoRepository : IEmpleadoRepository
         try
         {
             _logger.LogInformation("[{CorrelationId}] 🗄️ [REPOSITORY] Consultando empleados - Id Empleado: {Idempleado}, Dealer Id: {DealerId}, Curp: {Curp}, Página: {Page}",
-                correlationId, idEmpleado.ToString() ?? "Todos", dealerId.ToString() ?? "Todas", curp ?? "Todos", page);
+                correlationId, idEmpleado.ToString() ?? "Todos", dealerId ?? "Todas", curp ?? "Todos", page);
 
             using var connection = await _connectionFactory.CreateConnectionAsync();
 
@@ -55,7 +55,7 @@ public class EmpleadoRepository : IEmpleadoRepository
                 parameters.Add("idEmpleado", idEmpleado);
             }
 
-            if (dealerId.HasValue)
+            if (!string.IsNullOrWhiteSpace(dealerId))
             {
                 whereClause += " AND DEALERID = :dealerId";
                 parameters.Add("dealerId", dealerId);
@@ -135,7 +135,7 @@ public class EmpleadoRepository : IEmpleadoRepository
 
     public async Task<int> GetTotalCountAsync(
         int? idEmpleado,
-        int? dealerId,
+        string? dealerId,
         string? curp,
         string? numeroEmpleado,
         string correlationId)
@@ -153,7 +153,7 @@ public class EmpleadoRepository : IEmpleadoRepository
                 parameters.Add("idEmpleado", idEmpleado);
             }
 
-            if (dealerId.HasValue)
+            if (!string.IsNullOrWhiteSpace(dealerId))
             {
                 whereClause += " AND DEALERID = :dealerId";
                 parameters.Add("dealerId", dealerId);
