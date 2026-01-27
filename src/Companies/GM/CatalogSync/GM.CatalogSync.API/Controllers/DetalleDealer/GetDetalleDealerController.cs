@@ -52,7 +52,7 @@ public class GetDetalleDealerController : ControllerBase
                 currentUser, correlationId, new { dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId });
 
                 var (data, totalRecords) = await _service.ObtenerDelearAsync(
-                    dealerId, nombre, razonSocial, rfc, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
+                    dealerId, nombre, razonSocial, rfc, activo, userInfo.EmpresaId, page, pageSize, currentUser, correlationId);
                 
                 
                 int totalPages = (int)Math.Ceiling((double)totalRecords / pageSize);
