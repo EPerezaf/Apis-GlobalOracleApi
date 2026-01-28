@@ -1,26 +1,25 @@
 using GM.CatalogSync.Application.DTOs;
 
-namespace GM.CatalogSync.Application.Interfaces.Services
-{
+namespace GM.CatalogSync.Application.Services;
+
     public interface ICargaExpedienteService
     {
-        Task<CargaExpedienteResponseDto> InsertarAsync(
+        Task<CargaExpedienteResponseDto> CrearExpedienteAsync(
             int empresaId,
-            int empleadoId,
-            string usuarioActual,
-            InsertarCargaExpedienteDto dto,
+            int idEmpleado,
+            string currentUser,
+            CrearCargaExpedienteDto dto,
             string correlationId);
 
-        Task<CargaExpedienteResponseDto> ActualizarAsync(
+        Task<CargaExpedienteResponseDto> ActualizarExpedienteAsync(
             int documentoId,
             int empresaId,
-            int empleadoId,
-            string usuarioActual,
+            int idEmpleado,
+            string currentUser,
             ActualizarCargaExpedienteDto dto,
             string correlationId);
 
-        Task<string> ObtenerNombreDocumentoAsync(
-            int claveTipoDocumento,
+        Task<CargaExpedienteResponseDto?> ObtenerPorIdAsync(
+            int documentoId,
             string correlationId);
     }
-}

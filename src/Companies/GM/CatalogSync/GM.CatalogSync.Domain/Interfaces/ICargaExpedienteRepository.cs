@@ -6,10 +6,12 @@ namespace GM.CatalogSync.Domain.Interfaces
     {
         Task<int> InsertarAsync(
             CargaExpediente expediente,
+            string currentUser,
             string correlationId);
             
         Task<bool> ActualizarAsync(
             CargaExpediente expediente,
+            string currentUser,
             string correlationId);
             
         Task<CargaExpediente?> ObtenerPorIdAsync(

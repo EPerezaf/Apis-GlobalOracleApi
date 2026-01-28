@@ -1,6 +1,9 @@
 using Dapper;
 using GM.CatalogSync.Domain.Entities;
 using GM.CatalogSync.Domain.Interfaces;
+using Oracle.ManagedDataAccess.Client;
+using Shared.Exceptions;
+using Shared.Infrastructure;
 using Microsoft.Extensions.Logging;
 using System.Data;
 
@@ -8,26 +11,39 @@ namespace GM.CatalogSync.Infrastructure.Repositories
 {
     public class CargaExpedienteRepository : ICargaExpedienteRepository
     {
-        private readonly IDbConnection _connection;
+        private readonly IOracleConnectionFactory _connectionFactory;
         private readonly ILogger<CargaExpedienteRepository> _logger;
 
         public CargaExpedienteRepository(
-            IDbConnection connection,
+            IOracleConnectionFactory connectionFactory,
             ILogger<CargaExpedienteRepository> logger)
         {
-            _connection = connection;
+            _connectionFactory = connectionFactory;
             _logger = logger;
+        }
+
+        private async Task<int> ObtenerSiguienteIdAsync(IDbConnection connection)
+        {
+            const string sql = "SELECT NVL(MAX(COEE_IDDOCUMENTO), 0) + 1 FROM LABGDMS.CO_EMPLEADOS_EXPEDIENTE";
+            return await connection.ExecuteScalarAsync<int>(sql);
         }
 
         public async Task<int> InsertarAsync(
             CargaExpediente expediente,
+            string currentUser,
             string correlationId)
         {
             try
             {
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+                
+                //Calculamos el nuevo ID desde el Back (MAX + 1)
+                int nuevoId = await ObtenerSiguienteIdAsync(connection);
+                
                 _logger.LogInformation(
-                    "CorrelationId {CorrelationId} - Insertando expediente empleado {EmpleadoId}",
+                    "CorrelationId {CorrelationId} - Generado nuevo ID: {NuevoId} para empleado {IdEmpleado}",
                     correlationId,
+                    nuevoId,
                     expediente.IdEmpleado);
 
                 var sql = @"
@@ -48,12 +64,14 @@ namespace GM.CatalogSync.Infrastructure.Repositories
                     COEE_FECHAVENCIMIENTO,
                     COEE_OBSERVACIONES,
                     USUARIOALTA,
-                    FECHAALTA
+                    FECHAALTA,
+                    USUARIOMODIFICACION,
+                    FECHAMODIFICACION
                 )
                 VALUES
                 (
                     :EmpresaId,
-                    SEQ_COEE_IDDOCUMENTO.NEXTVAL,
+                    :IdDocumento,
                     :IdEmpleado,
                     :ClaveTipoDocumento,
                     :NombreDocumento,
@@ -67,41 +85,65 @@ namespace GM.CatalogSync.Infrastructure.Repositories
                     :FechaVencimiento,
                     :Observaciones,
                     :UsuarioAlta,
+                    SYSDATE,
+                    :UsuarioModificacion,
                     SYSDATE
-                )
-                RETURNING COEE_IDDOCUMENTO INTO :IdDocumento";
+                )";
 
-                var parameters = new DynamicParameters(expediente);
-                parameters.Add("IdDocumento", dbType: DbType.Int32, direction: ParameterDirection.Output);
+                var parameters = new DynamicParameters();
+                parameters.Add("EmpresaId", expediente.EmpresaId);
+                parameters.Add("IdDocumento", nuevoId); // Pasamos el ID calculado
+                parameters.Add("IdEmpleado", expediente.IdEmpleado);
+                parameters.Add("ClaveTipoDocumento", expediente.ClaveTipoDocumento);
+                parameters.Add("NombreDocumento", expediente.NombreDocumento);
+                parameters.Add("NombreArchivoStorage", expediente.NombreArchivoStorage);
+                parameters.Add("RutaStorage", expediente.RutaStorage);
+                parameters.Add("ContainerStorage", expediente.ContainerStorage);
+                parameters.Add("VersionDocumento", expediente.VersionDocumento);
+                parameters.Add("EsVigente", expediente.EsVigente);
+                parameters.Add("FechaDocumento", expediente.FechaDocumento);
+                parameters.Add("FechaVencimiento", expediente.FechaVencimiento);
+                parameters.Add("Observaciones", expediente.Observaciones);
+                parameters.Add("UsuarioAlta", currentUser ?? "SYSTEM");
+                parameters.Add("UsuarioModificacion", currentUser ?? "SYSTEM");
 
-                await _connection.ExecuteAsync(sql, parameters);
+                await connection.ExecuteAsync(sql, parameters);
 
-                var idDocumento = parameters.Get<int>("IdDocumento");
-                
                 _logger.LogInformation(
-                    "CorrelationId {CorrelationId} - Expediente insertado con ID {IdDocumento}",
+                    "CorrelationId {CorrelationId} - Expediente insertado exitosamente con ID {IdDocumento}",
                     correlationId,
-                    idDocumento);
+                    nuevoId);
 
-                return idDocumento;
+                return nuevoId;
+            }
+            catch (OracleException ex)
+            {
+                _logger.LogError(ex, "[{CorrelationId}] ❌ [REPOSITORY] Error Oracle en InsertarAsync", correlationId);
+                throw new DataAccessException("Error al insertar documento en Oracle", ex);
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "CorrelationId {CorrelationId} - Error al insertar expediente {EmpleadoId}",
-                    correlationId,
-                    expediente.IdEmpleado);
-                throw;
+                _logger.LogError(ex, "[{CorrelationId}] ❌ [REPOSITORY] Error inesperado en InsertarAsync", correlationId);
+                throw new DataAccessException("Error inesperado al insertar documento", ex);
             }
         }
 
         public async Task<bool> ActualizarAsync(
             CargaExpediente expediente,
+            string currentUser,
             string correlationId)
         {
             try
             {
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+
+                if (connection.State != System.Data.ConnectionState.Open)
+                {
+                    await connection.OpenAsync();
+                }
+
+                using var transaction = connection.BeginTransaction();
+
                 _logger.LogInformation(
                     "CorrelationId {CorrelationId} - Actualizando expediente {DocumentoId}",
                     correlationId,
@@ -121,7 +163,7 @@ namespace GM.CatalogSync.Infrastructure.Repositories
                     FECHAMODIFICACION = SYSDATE
                 WHERE COEE_IDDOCUMENTO = :IdDocumento";
 
-                var rows = await _connection.ExecuteAsync(sql, expediente);
+                var rows = await connection.ExecuteAsync(sql, expediente);
 
                 if (rows == 0)
                 {
@@ -156,6 +198,8 @@ namespace GM.CatalogSync.Infrastructure.Repositories
         {
             try
             {
+                using var connection = await _connectionFactory.CreateConnectionAsync();
+
                 _logger.LogInformation(
                     "CorrelationId {CorrelationId} - Obteniendo expediente {DocumentoId}",
                     correlationId,
@@ -184,8 +228,8 @@ namespace GM.CatalogSync.Infrastructure.Repositories
                 FROM LABGDMS.CO_EMPLEADOS_EXPEDIENTE
                 WHERE COEE_IDDOCUMENTO = :IdDocumento";
 
-                var expediente = await _connection.QueryFirstOrDefaultAsync<CargaExpediente>(
-                    sql, 
+                var expediente = await connection.QueryFirstOrDefaultAsync<CargaExpediente>(
+                    sql,
                     new { IdDocumento = idDocumento });
 
                 if (expediente == null)

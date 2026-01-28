@@ -1,191 +1,166 @@
+using System.Diagnostics;
 using GM.CatalogSync.Application.DTOs;
-using GM.CatalogSync.Application.Interfaces.Services;
 using GM.CatalogSync.Domain.Entities;
+using GM.CatalogSync.Application.Exceptions;
 using GM.CatalogSync.Domain.Interfaces;
 using Microsoft.Extensions.Logging;
+using Shared.Exceptions;
 
-namespace GM.CatalogSync.Application.Services
+namespace GM.CatalogSync.Application.Services;
+
+public class CargaExpedienteService : ICargaExpedienteService
 {
-    public class CargaExpedienteService : ICargaExpedienteService
+    private readonly ICargaExpedienteRepository _repository;
+    private readonly ILogger<CargaExpedienteService> _logger;
+
+    public CargaExpedienteService(
+        ICargaExpedienteRepository repository,
+        ILogger<CargaExpedienteService> logger)
     {
-        private readonly ICargaExpedienteRepository _repository;
-        private readonly ILogger<CargaExpedienteService> _logger;
+        _repository = repository;
+        _logger = logger;
+    }
 
-        public CargaExpedienteService(
-            ICargaExpedienteRepository repository,
-            ILogger<CargaExpedienteService> logger)
+    public async Task<CargaExpedienteResponseDto> CrearExpedienteAsync(
+        int empresaId,
+        int idEmpleado,
+        string currentUser,
+        CrearCargaExpedienteDto dto,
+        string correlationId)
+    {
+
+        _logger.LogInformation(
+            "🔷 [SERVICE] CorrelationId {CorrelationId} - Iniciando creación de expediente. EmpresaId: {EmpresaId}, IdEmpleado: {IdEmpleado}",
+            correlationId, empresaId, idEmpleado);
+
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+        if (string.IsNullOrWhiteSpace(dto.NombreArchivoStorage))
+            throw new ArgumentException("El nombre del archivo storage es requerido.");
+
+        // Mapear DTO a Entity 
+        var entidad = new CargaExpediente
         {
-            _repository = repository;
-            _logger = logger;
+            EmpresaId = empresaId,
+            IdEmpleado = idEmpleado,
+            ClaveTipoDocumento = dto.ClaveTipoDocumento,
+            NombreDocumento = dto.NombreDocumento,
+            NombreArchivoStorage = dto.NombreArchivoStorage,
+            RutaStorage = dto.RutaStorage,
+            ContainerStorage = dto.ContainerStorage,
+            VersionDocumento = 1, // Por ser Insertar, iniciamos en 1
+            EsVigente = 1,        // Activo por defecto
+            FechaCarga = DateTime.Now,
+            FechaDocumento = dto.FechaDocumento,
+            FechaVencimiento = dto.FechaVencimiento,
+            Observaciones = dto.Observaciones ?? string.Empty,
+            UsuarioAlta = currentUser
+        };
+
+        // El repositorio debe devolver el ID generado
+        var idDocumento = await _repository.InsertarAsync(entidad, correlationId, currentUser);
+
+        _logger.LogInformation(
+            "✅ [SERVICE] CorrelationId {CorrelationId} - Expediente creado con ID {IdDocumento}",
+            correlationId, idDocumento);
+
+        return new CargaExpedienteResponseDto
+        {
+        IdDocumento = entidad.IdDocumento,
+        NombreDocumento = entidad.NombreDocumento,
+        NombreArchivoStorage = entidad.NombreArchivoStorage,
+        RutaStorage = entidad.RutaStorage,
+        ContainerStorage = entidad.ContainerStorage,
+        VersionDocumento = entidad.VersionDocumento,
+        FechaDocumento = entidad.FechaDocumento,
+        FechaVencimiento = entidad.FechaVencimiento,
+        Observaciones = entidad.Observaciones,
+    };
+       
+    }
+
+    public async Task<CargaExpedienteResponseDto> ActualizarExpedienteAsync(
+        int documentoId,
+        int empresaId,
+        int idEmpleado,
+        string currentUser,
+        ActualizarCargaExpedienteDto dto,
+        string correlationId)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] CorrelationId {CorrelationId} - Actualizando expediente {DocumentoId}",
+            correlationId, documentoId);
+
+        if (dto == null) throw new ArgumentNullException(nameof(dto));
+
+        var documentoActual = await _repository.ObtenerPorIdAsync(documentoId, correlationId);
+        if (documentoActual == null)
+            throw new InvalidOperationException($"No se encontró el documento con ID {documentoId}");
+
+        // Lógica de versionado simple
+        int nuevaVersion = documentoActual.VersionDocumento;
+        if (!string.IsNullOrWhiteSpace(dto.RutaStorage) && dto.RutaStorage != documentoActual.RutaStorage)
+        {
+            nuevaVersion++;
         }
 
-        public async Task<CargaExpedienteResponseDto> InsertarAsync(
-            int empresaId,
-            int empleadoId,
-            string usuarioActual,
-            InsertarCargaExpedienteDto dto,
-            string correlationId)
+        var entidad = new CargaExpediente
         {
-            _logger.LogInformation(
-                "🔷 [SERVICE] CorrelationId {CorrelationId} - Iniciando creación de expediente. EmpresaId: {EmpresaId}, EmpleadoId: {EmpleadoId}",
-                correlationId,
-                empresaId,
-                empleadoId);
+            IdDocumento = documentoId,
+            EmpresaId = empresaId,
+            IdEmpleado = idEmpleado,
+            ClaveTipoDocumento = documentoActual.ClaveTipoDocumento,
+            NombreDocumento = documentoActual.NombreDocumento,
+            NombreArchivoStorage = dto.NombreArchivoStorage ?? documentoActual.NombreArchivoStorage,
+            RutaStorage = dto.RutaStorage ?? documentoActual.RutaStorage,
+            ContainerStorage = dto.ContainerStorage ?? documentoActual.ContainerStorage,
+            VersionDocumento = dto.VersionDocumento ?? nuevaVersion,
+            EsVigente = 1,
+            FechaDocumento = dto.FechaDocumento,
+            FechaVencimiento = dto.FechaVencimiento,
+            Observaciones = dto.Observaciones ?? documentoActual.Observaciones,
+            UsuarioModificacion = currentUser
+        };
 
-            if (dto == null)
-                throw new ArgumentNullException(nameof(dto));
+        var actualizado = await _repository.ActualizarAsync(entidad, correlationId, currentUser);
 
-            // Validaciones
-            if (string.IsNullOrWhiteSpace(dto.NombreArchivoStorage))
-                throw new ArgumentException("El nombre del archivo es requerido", nameof(dto.NombreArchivoStorage));
-
-            if (string.IsNullOrWhiteSpace(dto.RutaStorage))
-                throw new ArgumentException("La ruta del archivo es requerida", nameof(dto.RutaStorage));
-
-            if (string.IsNullOrWhiteSpace(dto.ContainerStorage))
-                throw new ArgumentException("El container es requerido", nameof(dto.ContainerStorage));
-
-            // Obtener nombre del documento desde catálogo
-            var nombreDocumento = await ObtenerNombreDocumentoAsync(
-                dto.ClaveTipoDocumento,
-                correlationId);
-
-            // Mapear DTO → Entity
-            var entidad = new CargaExpediente
-            {
-                EmpresaId = empresaId,
-                IdEmpleado = empleadoId,
-                ClaveTipoDocumento = dto.ClaveTipoDocumento,
-                NombreDocumento = nombreDocumento,
-                NombreArchivoStorage = dto.NombreArchivoStorage,
-                RutaStorage = dto.RutaStorage,
-                ContainerStorage = dto.ContainerStorage,
-                VersionDocumento = 1, // Primera versión siempre
-                EsVigente = 1, // Activo por defecto
-                FechaDocumento = dto.FechaDocumento,
-                FechaVencimiento = dto.FechaVencimiento ?? DateTime.MaxValue,
-                Observaciones = dto.Observaciones ?? string.Empty,
-                UsuarioAlta = usuarioActual
-            };
-
-            var idDocumento = await _repository.InsertarAsync(entidad, correlationId);
-
-            _logger.LogInformation(
-                "✅ [SERVICE] CorrelationId {CorrelationId} - Expediente creado exitosamente con ID {IdDocumento}",
-                correlationId,
-                idDocumento);
-
-            return new CargaExpedienteResponseDto
-            {
-                IdDocumento = idDocumento,
-                Mensaje = "Expediente creado exitosamente",
-                VersionDocumento = 1
-            };
-        }
-
-        public async Task<CargaExpedienteResponseDto> ActualizarAsync(
-            int documentoId,
-            int empresaId,
-            int empleadoId,
-            string usuarioActual,
-            ActualizarCargaExpedienteDto dto,
-            string correlationId)
+        return new CargaExpedienteResponseDto
         {
-            _logger.LogInformation(
-                "🔷 [SERVICE] CorrelationId {CorrelationId} - Iniciando actualización de expediente {DocumentoId}",
-                correlationId,
-                documentoId);
+        IdDocumento = entidad.IdDocumento,
+        NombreDocumento = entidad.NombreDocumento,
+        NombreArchivoStorage = entidad.NombreArchivoStorage,
+        RutaStorage = entidad.RutaStorage,
+        ContainerStorage = entidad.ContainerStorage,
+        VersionDocumento = entidad.VersionDocumento,
+        FechaDocumento = entidad.FechaDocumento,
+        FechaVencimiento = entidad.FechaVencimiento,
+        Observaciones = entidad.Observaciones,
+    };
+    }
 
-            if (dto == null)
-                throw new ArgumentNullException(nameof(dto));
+    public async Task<CargaExpedienteResponseDto?> ObtenerPorIdAsync(
+        int documentoId,
+        string correlationId)
+    {
+        _logger.LogInformation(
+            "🔷 [SERVICE] CorrelationId {CorrelationId} - Buscando expediente {DocumentoId}",
+            correlationId, documentoId);
 
-            if (documentoId != dto.IdDocumento)
-                throw new ArgumentException(
-                    "El ID del documento no coincide con el ID del DTO",
-                    nameof(documentoId));
+        var expediente = await _repository.ObtenerPorIdAsync(documentoId, correlationId);
 
-            // Obtener documento actual para verificar existencia y versión
-            var documentoActual = await _repository.ObtenerPorIdAsync(documentoId, correlationId);
-            
-            if (documentoActual == null)
-                throw new InvalidOperationException($"No se encontró el documento con ID {documentoId}");
+        if (expediente == null) return null;
 
-            // Determinar la nueva versión
-            int nuevaVersion = documentoActual.VersionDocumento;
-            
-            // Si se actualizó el archivo (cambió la ruta), incrementar versión
-            if (!string.IsNullOrWhiteSpace(dto.RutaStorage) && 
-                dto.RutaStorage != documentoActual.RutaStorage)
-            {
-                nuevaVersion++;
-                _logger.LogInformation(
-                    "CorrelationId {CorrelationId} - Archivo actualizado, incrementando versión de {VersionAnterior} a {VersionNueva}",
-                    correlationId,
-                    documentoActual.VersionDocumento,
-                    nuevaVersion);
-            }
-
-            // Si viene versión en el DTO, usarla (para control manual)
-            if (dto.VersionDocumento.HasValue)
-            {
-                nuevaVersion = dto.VersionDocumento.Value;
-            }
-
-            var entidad = new CargaExpediente
-            {
-                IdDocumento = documentoId,
-                EmpresaId = empresaId,
-                IdEmpleado = empleadoId,
-                // Si no vienen estos campos, mantener los actuales
-                NombreArchivoStorage = dto.NombreArchivoStorage ?? documentoActual.NombreArchivoStorage,
-                RutaStorage = dto.RutaStorage ?? documentoActual.RutaStorage,
-                ContainerStorage = dto.ContainerStorage ?? documentoActual.ContainerStorage,
-                VersionDocumento = nuevaVersion,
-                FechaDocumento = dto.FechaDocumento,
-                FechaVencimiento = dto.FechaVencimiento ?? DateTime.MaxValue,
-                Observaciones = dto.Observaciones ?? documentoActual.Observaciones,
-                UsuarioModificacion = usuarioActual
-            };
-
-            var actualizado = await _repository.ActualizarAsync(entidad, correlationId);
-
-            if (!actualizado)
-                throw new InvalidOperationException($"No se pudo actualizar el documento {documentoId}");
-
-            _logger.LogInformation(
-                "✅ [SERVICE] CorrelationId {CorrelationId} - Expediente {DocumentoId} actualizado exitosamente",
-                correlationId,
-                documentoId);
-
-            return new CargaExpedienteResponseDto
-            {
-                IdDocumento = documentoId,
-                Mensaje = "Expediente actualizado exitosamente",
-                VersionDocumento = nuevaVersion
-            };
-        }
-
-        public async Task<string> ObtenerNombreDocumentoAsync(
-            int claveTipoDocumento,
-            string correlationId)
+        return new CargaExpedienteResponseDto
         {
-            _logger.LogInformation(
-                "🔷 [SERVICE] CorrelationId {CorrelationId} - Obteniendo nombre de documento para clave {ClaveTipoDocumento}",
-                correlationId,
-                claveTipoDocumento);
-
-            // TODO: Implementar consulta a catálogo
-            // SELECT NOMBRE FROM LABGDMS.CO_EMPLEADOS_TIPOS_DOCUMENTOS 
-            // WHERE CLAVE = :claveTipoDocumento
-
-            var nombreDocumento = await Task.FromResult($"Documento_{claveTipoDocumento}");
-
-            _logger.LogInformation(
-                "✅ [SERVICE] CorrelationId {CorrelationId} - Nombre de documento obtenido: {NombreDocumento}",
-                correlationId,
-                nombreDocumento);
-
-            return nombreDocumento;
-        }
+            IdDocumento = (int)expediente.IdDocumento,
+            NombreDocumento = expediente.NombreDocumento,
+            NombreArchivoStorage = expediente.NombreArchivoStorage,
+            RutaStorage = expediente.RutaStorage,
+            ContainerStorage = expediente.ContainerStorage,
+            VersionDocumento = (int)expediente.VersionDocumento,
+            FechaDocumento = expediente.FechaDocumento,
+            FechaVencimiento = expediente.FechaVencimiento,
+            Observaciones = expediente.Observaciones ?? string.Empty
+        };
     }
 }

@@ -2,10 +2,14 @@ using System.ComponentModel.DataAnnotations;
 
 namespace GM.CatalogSync.Application.DTOs
 {
-    public class InsertarCargaExpedienteDto
+    public class CrearCargaExpedienteDto
     {
         [Required(ErrorMessage = "El tipo de documento es requerido")]
         public int ClaveTipoDocumento { get; set; }
+
+        [Required(ErrorMessage = "El nombre del documento es requerido")]
+        [StringLength(200)]
+        public string NombreDocumento { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El nombre del archivo es requerido")]
         [StringLength(200)]
@@ -57,7 +61,13 @@ namespace GM.CatalogSync.Application.DTOs
     public class CargaExpedienteResponseDto
     {
         public int IdDocumento { get; set; }
-        public string Mensaje { get; set; } = string.Empty;
+        public string NombreDocumento { get; set; } = string.Empty;
+        public string NombreArchivoStorage { get; set; } = string.Empty;
+        public string RutaStorage { get; set; } = string.Empty;
+        public string ContainerStorage { get; set; } = string.Empty;
         public int VersionDocumento { get; set; }
+        public DateTime FechaDocumento { get; set; }
+        public DateTime? FechaVencimiento { get; set; }
+        public string Observaciones { get; set; } = string.Empty;
     }
 }

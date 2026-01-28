@@ -5,8 +5,8 @@ namespace GM.CatalogSync.Application.Exceptions;
 
 public class EmpleadoNotFoundException : NotFoundException
 {
-    public EmpleadoNotFoundException(int empleadoId)
-        :base($"No se encontro el empleado con ID:{empleadoId}", "Empleado", empleadoId.ToString())
+    public EmpleadoNotFoundException(int idEmpleado)
+        :base($"No se encontro el empleado con ID:{idEmpleado}", "Empleado", idEmpleado.ToString())
     {
         
     }

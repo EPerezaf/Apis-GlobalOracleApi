@@ -1,5 +1,3 @@
-
-
 namespace GM.CatalogSync.Domain.Entities
 {
     public class CargaExpediente
@@ -16,8 +14,8 @@ namespace GM.CatalogSync.Domain.Entities
         public int EsVigente {get;set;}
         public DateTime FechaCarga { get;set;}
         public DateTime FechaDocumento { get; set;}
-        public DateTime FechaVencimiento { get;set;}
-        public string Observaciones { get; set; } = string.Empty;
+        public DateTime? FechaVencimiento { get;set;}
+        public string? Observaciones { get; set; } = string.Empty;
         public string UsuarioAlta { get; set;} = string.Empty;
         public DateTime FechaAlta { get;set;}
         public string UsuarioModificacion { get; set;} = string.Empty;

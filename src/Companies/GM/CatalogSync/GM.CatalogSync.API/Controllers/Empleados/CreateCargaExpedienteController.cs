@@ -1,13 +1,18 @@
+using System.Diagnostics;
+using System.Security.Claims;
 using GM.CatalogSync.Application.DTOs;
-using GM.CatalogSync.Application.Interfaces.Services;
+using GM.CatalogSync.Application.Exceptions;
+using GM.CatalogSync.Application.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using System.Security.Claims;
+using Shared.Contracts.Responses;
+using Shared.Security;
+using Shared.Exceptions;
 
-namespace GM.CatalogSync.API.Controllers
+namespace GM.CatalogSync.API.Controllers.Empleado
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/v1/common/erp/empleados/{empleadoId}/expediente")]
     [Authorize]
     [Tags("ERP")]
     public class CreateCargaExpedienteController : ControllerBase
@@ -25,71 +30,151 @@ namespace GM.CatalogSync.API.Controllers
 
         /// <summary>
         /// Registra un nuevo documento en el expediente del empleado
-        /// (El archivo debe estar previamente subido a Azure desde el frontend)
         /// </summary>
-        /// <param name="empleadoId">ID del empleado</param>
-        /// <param name="dto">Metadatos del documento ya subido</param>
-        [HttpPost("empleado/{empleadoId}")]
-        [ProducesResponseType(typeof(CargaExpedienteResponseDto), StatusCodes.Status201Created)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+        [HttpPost]
+        [ProducesResponseType(typeof(ApiResponse<object>), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> CrearExpediente(
             [FromRoute] int empleadoId,
-            [FromBody] InsertarCargaExpedienteDto dto)
+            [FromBody] CrearCargaExpedienteDto dto)
         {
-            var correlationId = Guid.NewGuid().ToString();
+            var correlationId = HttpContext.TraceIdentifier;
+            var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
-                // Obtener datos del usuario autenticado
-                var empresaId = int.Parse(User.FindFirstValue("EmpresaId") ?? "0");
-                var usuarioActual = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SYSTEM";
+                // Validar ID empleado
+                if (empleadoId <= 0)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "El ID del empleado no es válido",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
 
-                if (empresaId == 0)
+                // Obtener empresaId del token JWT
+                var empresaId = JwtUserHelper.GetEmpresaId(User, _logger);
+                if (!empresaId.HasValue)
                 {
                     _logger.LogWarning(
-                        "⚠️ CorrelationId {CorrelationId} - No se pudo obtener EmpresaId del token",
+                        "[{CorrelationId}] ⚠️ EmpresaId no encontrado en el token JWT",
                         correlationId);
-                    return BadRequest(new { mensaje = "No se pudo obtener la empresa del usuario" });
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "No se pudo obtener la empresa del usuario desde el token JWT.",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                // Validar DTO
+                if (dto == null)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Los datos del expediente son requeridos",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
                 }
 
                 _logger.LogInformation(
-                    "🟢 CorrelationId {CorrelationId} - POST /api/expediente/empleado/{EmpleadoId} - Usuario: {Usuario}, Empresa: {EmpresaId}",
-                    correlationId,
-                    empleadoId,
-                    usuarioActual,
-                    empresaId);
+                    "[{CorrelationId}] 📡 Iniciando POST crear expediente - EmpleadoId: {EmpleadoId}, EmpresaId: {EmpresaId}, Usuario: {Usuario}",
+                    correlationId, empleadoId, empresaId, currentUser);
 
-                var resultado = await _service.InsertarAsync(
-                    empresaId,
+                var empresaIdValue = empresaId.Value;
+
+                var resultadoDto = await _service.CrearExpedienteAsync(
+                    empresaIdValue,
                     empleadoId,
-                    usuarioActual,
+                    currentUser,
                     dto,
                     correlationId);
 
+                int idFinal = resultadoDto.IdDocumento;
+                stopwatch.Stop();
+
+                _logger.LogInformation(
+                    "[{CorrelationId}] ✅ Expediente creado exitosamente - DocumentoId: {DocumentoId}, Tiempo: {ElapsedMilliseconds}ms",
+                    correlationId, idFinal, stopwatch.ElapsedMilliseconds);
+
                 return CreatedAtAction(
-                    nameof(ObtenerExpediente),
-                    new { id = resultado.IdDocumento },
-                    resultado);
+            nameof(ObtenerDocumento),
+            new { empleadoId, documentoId = idFinal },
+            new ApiResponse<int>
+            {
+                Success = true,
+                Message = "Documento registrado exitosamente en el expediente",
+                Data = idFinal,
+                Timestamp = DateTimeHelper.GetMexicoTimeString()
+            });
+            }
+            catch (ArgumentNullException ex)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[{CorrelationId}] ⚠️ Error de validación (null): {Mensaje}",
+                    correlationId, ex.Message);
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
             }
             catch (ArgumentException ex)
             {
+                stopwatch.Stop();
                 _logger.LogWarning(
-                    "⚠️ CorrelationId {CorrelationId} - Error de validación: {Mensaje}",
-                    correlationId,
-                    ex.Message);
-                return BadRequest(new { mensaje = ex.Message, correlationId });
+                    "[{CorrelationId}] ⚠️ Error de validación: {Mensaje}",
+                    correlationId, ex.Message);
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+            catch (BusinessValidationException ex)
+            {
+                stopwatch.Stop();
+                _logger.LogWarning(
+                    "[{CorrelationId}] ⚠️ Error de validación de negocio: {Mensaje}",
+                    correlationId, ex.Message);
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Errors = ex.Errors?.Select(err => new ErrorDetail
+                    {
+                        Field = err.Field,
+                        Message = err.Message,
+                        Code = "VALIDATION_ERROR"
+                    }).ToList(),
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
             }
             catch (Exception ex)
             {
+                stopwatch.Stop();
                 _logger.LogError(
                     ex,
-                    "❌ CorrelationId {CorrelationId} - Error al crear expediente",
+                    "[{CorrelationId}] ❌ Error crítico al crear expediente",
                     correlationId);
-                return StatusCode(500, new 
-                { 
-                    mensaje = "Error interno del servidor", 
-                    correlationId 
+
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error interno del servidor al procesar el expediente.",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
             }
         }
@@ -97,67 +182,127 @@ namespace GM.CatalogSync.API.Controllers
         /// <summary>
         /// Actualiza la información de un documento del expediente
         /// </summary>
-        /// <param name="documentoId">ID del documento a actualizar</param>
-        /// <param name="empleadoId">ID del empleado</param>
-        /// <param name="dto">Datos a actualizar</param>
-        [HttpPut("{documentoId}/empleado/{empleadoId}")]
-        [ProducesResponseType(typeof(CargaExpedienteResponseDto), StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        [HttpPut("{documentoId}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
         public async Task<IActionResult> ActualizarExpediente(
-            [FromRoute] int documentoId,
-            [FromRoute] int empleadoId,
-            [FromBody] ActualizarCargaExpedienteDto dto)
+    [FromRoute] int empleadoId,
+    [FromRoute] int documentoId,
+    [FromBody] ActualizarCargaExpedienteDto dto)
         {
-            var correlationId = Guid.NewGuid().ToString();
+            var correlationId = HttpContext.TraceIdentifier;
+            var currentUser = JwtUserHelper.GetCurrentUser(User, _logger);
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {
+                // Validaciones iniciales
+                if (empleadoId <= 0 || documentoId <= 0)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Los IDs proporcionados no son válidos",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                if (dto == null || documentoId != dto.IdDocumento)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "Datos de documento inválidos o inconsistencia en ID",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                // Obtener empresaId del token
                 var empresaId = int.Parse(User.FindFirstValue("EmpresaId") ?? "0");
-                var usuarioActual = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? "SYSTEM";
+                if (empresaId <= 0)
+                {
+                    _logger.LogWarning("[{CorrelationId}] ⚠️ EmpresaId no encontrado en token para Usuario: {User}", correlationId, currentUser);
+                    return Unauthorized(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "No se pudo obtener la empresa del usuario.",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
 
                 _logger.LogInformation(
-                    "🟡 CorrelationId {CorrelationId} - PUT /api/expediente/{DocumentoId}/empleado/{EmpleadoId}",
-                    correlationId,
-                    documentoId,
-                    empleadoId);
+                    "[{CorrelationId}] 📡 Iniciando actualización de expediente - DocumentoId: {DocumentoId}, EmpleadoId: {EmpleadoId}, Usuario: {Usuario}",
+                    correlationId, documentoId, empleadoId, currentUser);
 
-                var resultado = await _service.ActualizarAsync(
+                // Ejecución del servicio
+                await _service.ActualizarExpedienteAsync(
                     documentoId,
                     empresaId,
                     empleadoId,
-                    usuarioActual,
+                    currentUser,
                     dto,
                     correlationId);
 
-                return Ok(resultado);
+                stopwatch.Stop();
+                _logger.LogInformation(
+                    "[{CorrelationId}] ✅ Expediente actualizado exitosamente - DocumentoId: {DocumentoId}, Tiempo: {ElapsedMs}ms, Usuario: {Usuario}",
+                    correlationId, documentoId, stopwatch.ElapsedMilliseconds, currentUser);
+
+                return NoContent();
             }
             catch (ArgumentException ex)
             {
-                _logger.LogWarning(
-                    "⚠️ CorrelationId {CorrelationId} - Error de validación: {Mensaje}",
-                    correlationId,
-                    ex.Message);
-                return BadRequest(new { mensaje = ex.Message, correlationId });
+                stopwatch.Stop();
+                _logger.LogWarning(ex, "[{CorrelationId}] ⚠️ Error de validación al actualizar: {Mensaje}, Tiempo: {ElapsedMs}ms",
+                    correlationId, ex.Message, stopwatch.ElapsedMilliseconds);
+
+                return BadRequest(new ApiResponse
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
             }
             catch (InvalidOperationException ex)
             {
-                _logger.LogWarning(
-                    "⚠️ CorrelationId {CorrelationId} - Documento no encontrado: {Mensaje}",
-                    correlationId,
-                    ex.Message);
-                return NotFound(new { mensaje = ex.Message, correlationId });
+                stopwatch.Stop();
+                _logger.LogWarning(ex, "[{CorrelationId}] ⚠️ Documento no encontrado: {DocumentoId}, Tiempo: {ElapsedMs}ms",
+                    correlationId, documentoId, stopwatch.ElapsedMilliseconds);
+
+                return NotFound(new ApiResponse
+                {
+                    Success = false,
+                    Message = ex.Message,
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
+            }
+            catch (DataAccessException ex) 
+            {
+                stopwatch.Stop();
+                _logger.LogError(ex, "[{CorrelationId}] ❌ Error de acceso a datos en actualización, Tiempo: {ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error al procesar la actualización en la base de datos.",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
+                });
             }
             catch (Exception ex)
             {
-                _logger.LogError(
-                    ex,
-                    "❌ CorrelationId {CorrelationId} - Error al actualizar expediente",
-                    correlationId);
-                return StatusCode(500, new 
-                { 
-                    mensaje = "Error interno del servidor", 
-                    correlationId 
+                stopwatch.Stop();
+                _logger.LogError(ex, "[{CorrelationId}] ❌ Error inesperado al actualizar expediente, Tiempo: {ElapsedMs}ms",
+                    correlationId, stopwatch.ElapsedMilliseconds);
+
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error interno del servidor.",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
             }
         }
@@ -165,34 +310,75 @@ namespace GM.CatalogSync.API.Controllers
         /// <summary>
         /// Obtiene un documento por ID
         /// </summary>
-        [HttpGet("{id}")]
-        [ProducesResponseType(StatusCodes.Status200OK)]
-        [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<IActionResult> ObtenerExpediente(int id)
+        [HttpGet("{documentoId}")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> ObtenerDocumento(
+            [FromRoute] int empleadoId,
+            [FromRoute] int documentoId)
         {
-            var correlationId = Guid.NewGuid().ToString();
-            
+            var correlationId = HttpContext.TraceIdentifier;
+
             try
             {
-                // TODO: Implementar servicio para obtener el documento
+                // Validaciones
+                if (empleadoId <= 0)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "El ID del empleado no es válido",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                if (documentoId <= 0)
+                {
+                    return BadRequest(new ApiResponse
+                    {
+                        Success = false,
+                        Message = "El ID del documento no es válido",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
                 _logger.LogInformation(
-                    "🔵 CorrelationId {CorrelationId} - GET /api/expediente/{Id}",
+                    "[{CorrelationId}] 📡 GET obtener expediente - DocumentoId: {DocumentoId}, EmpleadoId: {EmpleadoId}",
                     correlationId,
-                    id);
-                
-                await Task.CompletedTask;
-                return Ok(new { id, mensaje = "Método pendiente de implementar" });
+                    documentoId,
+                    empleadoId);
+
+                var resultado = await _service.ObtenerPorIdAsync(documentoId, correlationId);
+
+                if (resultado == null)
+                {
+                    return NotFound(new ApiResponse
+                    {
+                        Success = false,
+                        Message = $"No se encontró el expediente con ID {documentoId}",
+                        Timestamp = DateTimeHelper.GetMexicoTimeString()
+                    });
+                }
+
+                _logger.LogInformation(
+                    "[{CorrelationId}] ✅ Expediente obtenido exitosamente - DocumentoId: {DocumentoId}",
+                    correlationId,
+                    documentoId);
+
+                return Ok(resultado);
             }
             catch (Exception ex)
             {
                 _logger.LogError(
                     ex,
-                    "❌ CorrelationId {CorrelationId} - Error al obtener expediente",
+                    "[{CorrelationId}] ❌ Error al obtener expediente",
                     correlationId);
-                return StatusCode(500, new 
-                { 
-                    mensaje = "Error interno del servidor", 
-                    correlationId 
+                return StatusCode(500, new ApiResponse
+                {
+                    Success = false,
+                    Message = "Error interno del servidor",
+                    Timestamp = DateTimeHelper.GetMexicoTimeString()
                 });
             }
         }

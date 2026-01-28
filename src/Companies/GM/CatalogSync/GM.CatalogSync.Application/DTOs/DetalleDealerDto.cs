@@ -42,6 +42,12 @@ public class DetalleDealerRespuestaDto
     public string Nombre {get; set;} = string.Empty;
     public string RazonSocial { get; set;} = string.Empty;
     public string Rfc { get; set;} = string.Empty;
+    public string Estado { get; set;} = string.Empty;
+    public string Ciudad { get; set;} = string.Empty;
+    public string Telefono { get; set;} = string.Empty;
+    public string Representante { get; set;} = string.Empty;
+    public string Email { get; set;} = string.Empty;
+    public string Marcas { get; set;} = string.Empty;
     public int Empleados { get; set;}
     public string Tipo { get; set;} = string.Empty;
     public int Activo { get; set;} 
