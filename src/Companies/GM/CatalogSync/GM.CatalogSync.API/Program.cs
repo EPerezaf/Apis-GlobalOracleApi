@@ -321,6 +321,10 @@ builder.Services.AddScoped<IEmpleadoExpedienteService, EmpleadosExpedienteServic
 builder.Services.AddScoped<ICargaExpedienteRepository, CargaExpedienteRepository>();
 builder.Services.AddScoped<ICargaExpedienteService, CargaExpedienteService>();
 
+//Catalogo de Documentos de Expediente
+builder.Services.AddScoped<ICatalogoDocExpedienteRepository, CatalogoDocExpedienteRepository>();
+builder.Services.AddScoped<ICatalogoDocExpedienteService, CatalogoDocExpedienteService>();
+
 // ⚙️ Registrar servicios en segundo plano para monitoreo y mantenimiento
 // PerformanceMonitor: Mantiene la aplicación activa y monitorea rendimiento
 builder.Services.AddSingleton<PerformanceMonitor>();
